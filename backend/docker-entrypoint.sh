@@ -5,6 +5,7 @@
 #   - Render 健康检查等 /api/health 200 秒级返回
 #   - db push 在后台跑，渲染日志里能看到进度
 #   - Node 崩溃时容器退出（exec 不 fork）
+#   - 当前 cwd=/app/src（由 Dockerfile 设置）
 # ============================================================
 
 MIGRATE_ONLY=false
@@ -13,7 +14,7 @@ if [ "$1" = "--migrate-only" ]; then
 fi
 
 echo "🔧 [entrypoint] 启动检查..."
-mkdir -p "${UPLOAD_DIR:-/app/uploads}"
+mkdir -p "${UPLOAD_DIR:-/app/src/uploads}"
 
 # ============================================================
 # 数据库迁移函数（供后台和 --migrate-only 两种模式复用）
@@ -71,4 +72,5 @@ case "${DATABASE_URL}" in
 esac
 
 # Node 进程接管容器生命周期（不 return，不让 shell 退出）
-exec node src/index.js
+# 当前 cwd=/app/src，所以 node index.js 能正确 require('./routes/xxx')
+exec node index.js
