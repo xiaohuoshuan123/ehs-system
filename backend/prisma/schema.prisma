@@ -1,0 +1,1352 @@
+// ============================================================
+// 永杰集团昆山工厂智慧安全管理系统 - Prisma Schema
+// 覆盖全部15个一级模块
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===================== 系统管理 (模块15) =====================
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  parentId    String?
+  level       Int      @default(1) // 1=集团 2=运营中心 3=公司 4=厂部
+  description String?
+  parent      Organization?   @relation("OrgTree", fields: [parentId], references: [id])
+  children    Organization[]  @relation("OrgTree")
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  password       String
+  realName       String
+  employeeNo     String?  @unique
+  email          String?
+  phone          String?
+  gender         String?
+  orgId          String?
+  org            Organization?  @relation(fields: [orgId], references: [id])
+  roleId         String?
+  role           Role?           @relation(fields: [roleId], references: [id])
+  isActive       Boolean  @default(true)
+  isExternal     Boolean  @default(false) // 外部人员（承包商等）
+  contractorId   String?
+  contractor     Contractor?     @relation(fields: [contractorId], references: [id])
+  authorizations Authorization[]
+  signature      String?  // 电子签名图片路径
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Role {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  code       String   @unique
+  description String?
+  permissions String? // JSON: ["module1:read","module1:write"]
+  isActive   Boolean  @default(true)
+  users      User[]
+  authorizations Authorization[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Authorization {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  roleId    String
+  role      Role     @relation(fields: [roleId], references: [id])
+  scope     String   @default("general") // general/special
+  module    String
+  permission String  @default("read") // read/write/approve/delete
+  createdAt DateTime @default(now())
+
+  @@unique([userId, roleId, module])
+}
+
+model SystemParameter {
+  id          String   @id @default(cuid())
+  module      String
+  category    String
+  key         String
+  value       String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([key])
+}
+
+// ===================== 目标管理 (模块1) =====================
+
+model SafetyPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  title       String
+  fileUrl     String?
+  fileSize    Int?
+  uploadBy    String
+  status      String   @default("draft") // draft/published/archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AnnualObjective {
+  id              String   @id @default(cuid())
+  orgId           String
+  year            Int
+  level           String   // company/department/section/individual
+  title           String
+  indicators      String?  // JSON: [{name, target, unit}]
+  achievement     Float?   // 完成率%
+  responsibleUser String?
+  status          String   @default("draft") // draft/published/superseded
+  parentId        String?
+  fileUrl         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ObjectiveResponsibilityAgreement {
+  id         String   @id @default(cuid())
+  objectiveId String
+  user       String
+  templateFileUrl String?
+  signedFileUrl   String?
+  signStatus    String @default("pending") // pending/signed/approved/rejected
+  approverId    String?
+  approveTime   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model AnnualPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  title       String
+  content     String?
+  fileUrl     String?
+  status      String   @default("draft") // draft/published/closed
+  publishTime DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PlanFeedback {
+  id          String   @id @default(cuid())
+  planId      String
+  orgId       String
+  feedbackBy  String
+  actions     String?  // 行动方案
+  measures    String?  // 管理举措
+  implementation String? // 落实情况
+  fileUrl     String?
+  status      String   @default("draft") // draft/submitted/overdue
+  feedbackTime DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 组织构架与职责 (模块2) =====================
+
+model SafetyCommittee {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  description String?
+  fileUrl     String?  // 架构文件
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SafetyCommitteeMember {
+  id        String   @id @default(cuid())
+  committeeId String
+  userId    String
+  position  String
+  duty      String?
+  createdAt DateTime @default(now())
+}
+
+model SafetyMeeting {
+  id          String   @id @default(cuid())
+  orgId       String
+  committeeId String?
+  title       String
+  meetingDate DateTime
+  content     String?
+  minutesFileUrl String?
+  attendees   String?  // JSON: [userIds]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SafetyManagementOrg {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  parentId    String?
+  parent      SafetyManagementOrg? @relation("SafetyOrgTree", fields: [parentId], references: [id])
+  children    SafetyManagementOrg[] @relation("SafetyOrgTree")
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ResponsibilitySystem {
+  id          String   @id @default(cuid())
+  orgId       String
+  version     Int
+  year        Int
+  title       String
+  content     String?
+  fileUrl     String?
+  publishBy   String
+  publishTime DateTime?
+  status      String   @default("draft") // draft/published/archived
+  reviewStatus String  @default("pending") // pending/reviewed/archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ResponsibilityFeedback {
+  id              String   @id @default(cuid())
+  systemId        String
+  user            String
+  confirmStatus   String   @default("pending") // pending/confirmed/rejected
+  fulfillMaterial String?
+  confirmTime     DateTime?
+  createdAt       DateTime @default(now())
+}
+
+// ===================== 安全生产投入 (模块3) =====================
+
+model SafetyExpenditurePlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  totalAmount Float
+  categories  String?  // JSON: [{category, amount}]
+  status      String   @default("draft") // draft/submitted/approved/rejected
+  approverId  String?
+  approveTime DateTime?
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SafetyExpenditureRecord {
+  id          String   @id @default(cuid())
+  planId      String
+  orgId       String
+  month       Int
+  category    String
+  amount      Float
+  balance     Float?
+  description String?
+  fileUrl     String?
+  recordBy    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 制度化管理 (模块4) =====================
+
+model LegalRegulation {
+  id             String   @id @default(cuid())
+  title          String
+  source         String?  // 来源（外部平台/手动）
+  regulationNo   String?
+  effectiveDate  DateTime?
+  expireDate     DateTime?
+  isApplicable   Boolean  @default(false)
+  applicableScope String?
+  content        String?
+  fileUrl        String?
+  publishTime    DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model InternalRegulation {
+  id          String   @id @default(cuid())
+  orgId       String?
+  title       String
+  regulationNo String?
+  category    String?  // 管理类/技术类/操作规程等
+  content     String?
+  fileUrl     String?
+  status      String   @default("draft") // draft/published/archived
+  version     Int      @default(1)
+  publishTime DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ComplianceAssessment {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  title       String
+  content     String?
+  fileUrl     String?
+  status      String   @default("draft") // draft/submitted/reviewed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 教育培训 (模块5) =====================
+
+model SafetyCertificate {
+  id            String   @id @default(cuid())
+  userId        String
+  orgId         String
+  certType      String   // 企业负责人/安全管理人员/特种作业/消防
+  certCategory  String?
+  certItem      String?
+  certNo        String?
+  issueOrg      String?
+  issueDate     DateTime?
+  expireDate    DateTime?
+  reviewDate    DateTime?  // 复审日期
+  fileUrl       String?
+  status        String   @default("valid") // valid/review_pending/expired/revoked
+  alertLevel    String?  // normal/90d/60d/30d/overdue
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model CertificateStandard {
+  id        String   @id @default(cuid())
+  orgId     String
+  certType  String
+  certCategory String
+  certItem  String?
+  requiredCount Int  @default(1)
+  createdAt DateTime @default(now())
+}
+
+model SafetyCourse {
+  id            String   @id @default(cuid())
+  orgId         String
+  title         String
+  description   String?
+  courseType    String   @default("online") // online/offline
+  isRequired    Boolean  @default(true)
+  studyHours    Float?
+  videoUrl      String?
+  examId        String?
+  examQuestionCount Int?
+  examPassScore Float?
+  startLearnTime DateTime?
+  endLearnTime  DateTime?
+  fileUrl       String?
+  status        String   @default("draft") // draft/published/archived
+  publishBy     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model UserCourse {
+  id         String   @id @default(cuid())
+  courseId   String
+  userId     String
+  status     String   @default("not_started") // not_started/in_progress/completed
+  studyHours Float    @default(0)
+  startTime  DateTime?
+  endTime    DateTime?
+  examScore  Float?
+  isPassed   Boolean?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([courseId, userId])
+}
+
+model ExamQuestion {
+  id          String   @id @default(cuid())
+  orgId       String
+  category    String?  // 分类
+  visibility  String   @default("internal") // public/internal/private
+  type        String   // single/multiple/judge/short_answer
+  content     String
+  options     String?  // JSON: ["A:xxx","B:xxx"]
+  answer      String
+  explanation String?
+  score       Float    @default(1)
+  examCount   Int      @default(0)
+  wrongCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Exam {
+  id            String   @id @default(cuid())
+  orgId         String
+  title         String
+  description   String?
+  templateType  String   @default("random") // fixed/random
+  questionIds   String   // JSON: [questionIds]
+  totalScore    Float
+  passScore     Float
+  examTimeLimit Int?     // 分钟
+  startTime     DateTime
+  endTime       DateTime
+  maxAttempts   Int      @default(1)
+  targetUsers   String?  // JSON: [userIds] 或 "all"
+  isPractice    Boolean  @default(false)
+  signMethod    String   @default("qr") // qr/system
+  status        String   @default("draft") // draft/scheduled/active/completed/cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ExamRecord {
+  id        String   @id @default(cuid())
+  examId    String
+  userId    String
+  attempt   Int      @default(1)
+  startTime DateTime
+  endTime   DateTime?
+  score     Float?
+  isPassed  Boolean?
+  answers   String?  // JSON
+  signInTime DateTime?
+  createdAt DateTime @default(now())
+}
+
+model SafetyTraining {
+  id          String   @id @default(cuid())
+  orgId       String
+  trainType   String   // three_level/re_education/team_level
+  userId      String
+  trainDate   DateTime
+  content     String?
+  teacher     String?
+  hours       Float?
+  testScore   Float?
+  traineeSign String?  // 受训人签名
+  teacherSign String?  // 培训人签名
+  status      String   @default("completed")
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+}
+
+model MentorApprentice {
+  id        String   @id @default(cuid())
+  orgId     String
+  mentorId  String
+  apprenticeId String
+  startDate DateTime
+  endDate   DateTime?
+  status    String   @default("active") // active/completed/terminated
+  agreementFileUrl String?
+  assessmentFileUrl String?
+  createdAt DateTime @default(now())
+}
+
+// ===================== 生产设备设施管理 (模块6) =====================
+
+model Equipment {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  code        String
+  type        String
+  category    String?
+  model       String?
+  spec        String?
+  manufacturer String?
+  purchaseDate DateTime?
+  commissionDate DateTime?
+  responsibleDept String?
+  status      String   @default("in_use") // in_use/under_maintenance/scrapped
+  fileUrl     String?
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EquipmentMaintenance {
+  id          String   @id @default(cuid())
+  equipmentId String
+  planDate    DateTime
+  actualDate  DateTime?
+  type        String   // inspection/repair/overhaul
+  content     String?
+  status      String   @default("planned") // planned/in_progress/completed/overdue
+  executor    String?
+  result      String?
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EquipmentInspection {
+  id          String   @id @default(cuid())
+  equipmentId String
+  orgId       String
+  inspectDate DateTime
+  inspector   String
+  type        String   // daily/safety_device/calibration
+  result      String   // normal/abnormal
+  issues      String?
+  status      String   @default("completed") // pending/completed
+  createdAt   DateTime @default(now())
+}
+
+model Chemical {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  aliases     String?
+  casNo       String?
+  isHazardous Boolean  @default(false)
+  isEasyToxic Boolean  @default(false)
+  isExplosive Boolean  @default(false)
+  isProhibited Boolean  @default(false)
+  sdsFileUrl  String?
+  storageLocation String?
+  maxStock    Float?
+  currentStock Float?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HazardFacility {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  type        String   // 洗眼器/呼吸器/灭火器等
+  location    String?
+  status      String   @default("normal") // normal/abnormal/scrapped
+  lastInspectDate DateTime?
+  nextInspectDate DateTime?
+  qrCodeUrl   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SpecialEquipment {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  code            String
+  type            String   // 行车/叉车/压力容器/安全阀/压力表
+  registrationNo  String?
+  useOrg          String?
+  commissionDate  DateTime?
+  status          String   @default("in_use") // in_use/stopped/scrapped
+  lastInspectDate DateTime?
+  nextInspectDate DateTime?
+  alertStatus     String   @default("normal") // normal/60d/30d/expired/unqualified
+  fileUrl         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SpecialEquipmentInspection {
+  id             String   @id @default(cuid())
+  equipmentId    String
+  inspectDate    DateTime
+  nextInspectDate DateTime?
+  inspectOrg     String?
+  result         String   // pass/fail
+  inspector      String?
+  fileUrl        String?
+  createdAt      DateTime @default(now())
+}
+
+model FireZone {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  zoneType    String?
+  description String?
+  mapUrl      String?
+  planFileUrl String?
+  fireGroup   String?  // 防火小组
+  ertMembers  String?  // ERT队员
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FirePatrolPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  zoneId      String
+  name        String
+  frequency   String   // daily/weekly/monthly
+  defaultPatrolBy String?
+  patrolItems String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FirePatrol {
+  id        String   @id @default(cuid())
+  planId    String
+  patrolDate DateTime
+  patrolBy  String
+  result    String
+  issues    String?
+  photoUrls String?
+  status    String   @default("completed")
+  createdAt DateTime @default(now())
+}
+
+model FireEquipment {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  type        String   // 灭火器/消火栓/报警器等
+  location    String?
+  quantity    Int      @default(1)
+  manufactureDate DateTime?
+  expireDate  DateTime?
+  inspectCycle  Int    @default(12) // 月
+  lastInspectDate DateTime?
+  nextInspectDate DateTime?
+  qrCodeUrl   String?
+  status      String   @default("normal")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 作业安全 (模块7) =====================
+
+model RiskFactor {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  category    String?  // 人的因素/物的因素/环境因素/管理因素
+  level       String   @default("low") // low/medium/high/major
+  measures    String?
+  reviewDate  DateTime?
+  reviewer    String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SafetyObservation {
+  id          String   @id @default(cuid())
+  orgId       String
+  obsType     String   // observation/inspection/HP
+  observer    String
+  observedUser String?
+  location    String?
+  date        DateTime
+  content     String?
+  photos      String?  // JSON: [urls]
+  issues      String?
+  status      String   @default("completed")
+  followUpStatus String @default("pending") // pending/resolved/closed
+  createdAt   DateTime @default(now())
+}
+
+model Contractor {
+  id            String   @id @default(cuid())
+  orgId         String
+  name          String
+  unifiedCode   String?
+  licenseNo     String?
+  licenseExpiry DateTime?
+  contactPerson String?
+  contactPhone  String?
+  address       String?
+  qualificationFileUrl String?
+  status        String   @default("active") // active/suspended/blacklisted
+  users         User[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ContractorApproval {
+  id          String   @id @default(cuid())
+  contractorId String
+  type        String   // qualification_review/project_material_review/training
+  applicantId String
+  applyDate   DateTime
+  reviewDate  DateTime?
+  result      String   @default("pending") // pending/approved/rejected
+  reviewer    String?
+  comment     String?
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+}
+
+model ContractorBlacklist {
+  id          String   @id @default(cuid())
+  contractorId String
+  reason      String
+  blacklistDate DateTime
+  unblockDate DateTime?
+  status      String   @default("active") // active/unblocked
+  createdAt   DateTime @default(now())
+}
+
+model ChangeRequest {
+  id          String   @id @default(cuid())
+  orgId       String
+  changeNo    String
+  title       String
+  changeType  String   // 工艺/设备/安全
+  description String?
+  riskAssessment String?
+  measures    String?
+  applicantId String
+  applyDate   DateTime
+  approveStatus String @default("draft") // draft/submitted/approved/rejected
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model WorkPermit {
+  id              String   @id @default(cuid())
+  orgId           String
+  permitNo        String
+  workType        String   // hot_work/confined_space/lifting/road_breaking/blind_plug/temp_electric/high_work/digging
+  workLevel       String?  // 一级/二级/三级
+  title           String
+  location        String?
+  description     String?
+  workContent     String?
+  workStartTime   DateTime?
+  workEndTime     DateTime?
+  applicantId     String
+  supervisorId    String?
+  workPersonIds   String?  // JSON
+  riskAssessment  String?
+  measures        String?  // JSON: [{measure, status}]
+  safetyBriefingFileUrl String?
+  preWorkConfirmBy String?
+  preWorkConfirmTime DateTime?
+  postWorkConfirmBy String?
+  postWorkConfirmTime DateTime?
+  approveStatus   String   @default("draft") // draft/submitted/approved/rejected/cancelled/completed
+  approveHistory  String?  // JSON
+  gpsLocation     String?
+  permitValidHours Int     @default(8)
+  status          String   @default("draft") // draft/submitted/in_progress/paused/completed/cancelled
+  issueFound      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// ===================== 危险源监控 (模块8) =====================
+
+model WorkUnit {
+  id          String   @id @default(cuid())
+  orgId       String
+  parentId    String?
+  parent      WorkUnit?  @relation("WUTree", fields: [parentId], references: [id])
+  children    WorkUnit[] @relation("WUTree")
+  name        String
+  type        String   // equipment/activity
+  description String?
+  qrCodeUrl   String?
+  warningSignUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RiskControlList {
+  id            String   @id @default(cuid())
+  orgId         String
+  workUnitId    String?
+  hazardSource  String
+  riskCategory  String   // activity/equipment
+  potentialConsequence String?
+  riskLevel     String   @default("low") // low/general/major/major_above
+  isMajorAbove  Boolean  @default(false)
+  controlMeasures String?
+  initialAssessmentDate DateTime?
+  assessmentGroup String?
+  changeLog     String?  // JSON: [{date, reason, oldLevel, newLevel}]
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model RiskChange {
+  id          String   @id @default(cuid())
+  riskControlId String
+  changeType  String   // new_project/new_process/accident/org_change/system_change/annual_review
+  reason      String
+  assessorId  String
+  assessmentDate DateTime
+  oldLevel    String?
+  newLevel    String?
+  conclusion  String?
+  fileUrl     String?
+  createdAt   DateTime @default(now())
+}
+
+model RiskReview {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  reviewerId  String
+  reviewDate  DateTime?
+  status      String   @default("pending") // pending/in_progress/completed
+  reportFileUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RiskMap {
+  id          String   @id @default(cuid())
+  orgId       String
+  workUnitId  String?
+  areaName    String?
+  mapData     String   // JSON: {regions: [{name, level, coords}]}
+  mapImageUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RiskInspectionConfig {
+  id          String   @id @default(cuid())
+  orgId       String
+  riskControlId String
+  frequency   String   // daily/weekly/monthly/quarterly
+  inspectLevel String  // worker/supervisor/manager
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RiskInspection {
+  id          String   @id @default(cuid())
+  configId    String
+  orgId       String
+  inspectDate DateTime
+  inspectorId String
+  result      String   // normal/abnormal
+  issues      String?
+  status      String   @default("pending") // pending/completed/overdue
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 隐患排查治理 (模块9) =====================
+
+model InspectionPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  planType    String   // daily/special
+  startDate   DateTime
+  endDate     DateTime
+  noticeFileUrl String?
+  teamMembers String?  // JSON: [userIds]
+  checklist   String?  // JSON: [{item, category}]
+  status      String   @default("draft") // draft/published/closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Hazard {
+  id          String   @id @default(cuid())
+  orgId       String
+  hazardNo    String
+  title       String
+  content     String?
+  type        String   // 人的不安全行为/物的不安全状态/管理缺陷
+  category    String?  // 火灾/爆炸/机械伤害/触电/坠落/中毒/其他
+  area        String?
+  source      String?  // employee_report/inspection/special_equipment/other
+  sourceId    String?
+  riskLevel   String   @default("general") // general/major
+  isMajor     Boolean  @default(false)
+  foundDate   DateTime
+  fixDeadline DateTime?
+  assigneeId  String?
+  verifierId  String?
+  fixMeasures String?
+  fixStatus   String   @default("pending") // pending/in_progress/fixing/verifying/closed/overdue/deleted
+  verifyResult String?
+  verifyTime  DateTime?
+  photos      String?  // JSON: [urls]
+  improvementPlan String? // 重大隐患改进方案
+  deleteApplyStatus String? // pending/approved/rejected
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model HazardReward {
+  id          String   @id @default(cuid())
+  hazardId    String
+  rewardType  String
+  rewardAmount Float
+  rewardDesc  String?
+  awardTime   DateTime?
+  status      String   @default("pending") // pending/approved/paid
+  createdAt   DateTime @default(now())
+}
+
+model ViolationClause {
+  id          String   @id @default(cuid())
+  orgId       String
+  clauseNo    String
+  title       String
+  content     String
+  points      Int      @default(1)
+  category    String?
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Violation {
+  id          String   @id @default(cuid())
+  orgId       String
+  user        String
+  linkedUsers String?  // JSON: [userIds]
+  clauseId    String
+  violationDate DateTime
+  description String?
+  photoUrls   String?
+  status      String   @default("pending") // pending/confirmed/processed
+  handleResult String?
+  handleDate  DateTime?
+  reporter    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 职业健康 (模块10) =====================
+
+model OccupationalHazardPosition {
+  id          String   @id @default(cuid())
+  orgId       String
+  positionName String
+  hazardFactor String?
+  hazardLevel String?
+  remark      String?
+  createdAt   DateTime @default(now())
+}
+
+model OccupationalExposurePerson {
+  id          String   @id @default(cuid())
+  orgId       String
+  userId      String
+  positionId  String
+  exposureStartDate DateTime
+  exposureEndDate DateTime?
+  status      String   @default("active") // active/transferred/quit
+  createdAt   DateTime @default(now())
+}
+
+model OccupationalExamPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  planType    String   // pre_employment/periodic/post_retirement
+  startDate   DateTime
+  endDate     DateTime
+  targetCount Int?
+  status      String   @default("draft") // draft/in_progress/completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model OccupationalExamResult {
+  id            String   @id @default(cuid())
+  planId        String?
+  orgId         String
+  userId        String
+  examDate      DateTime
+  examOrg       String?
+  resultType    String   // normal/occupational_disease/contraindication/suspected_disease
+  resultDetail  String?
+  reportFileUrl String?
+  signStatus    String   @default("pending") // pending/signed
+  signTime      DateTime?
+  noticeFileUrl String?
+  transferNoticeFileUrl String?
+  processStatus String   @default("pending") // pending/processed/reviewed
+  createdAt     DateTime @default(now())
+}
+
+model ProtectiveFacility {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  category    String
+  type        String?
+  location    String?
+  hazardFactorId String?
+  status      String   @default("normal")
+  lastInspectDate DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model DosimeterRecord {
+  id          String   @id @default(cuid())
+  orgId       String
+  userId      String
+  deviceNo    String?
+  wearStartDate DateTime
+  wearEndDate DateTime?
+  doseValue   Float?
+  isAbnormal  Boolean  @default(false)
+  reportFileUrl String?
+  signStatus  String   @default("pending")
+  createdAt   DateTime @default(now())
+}
+
+model WarningSign {
+  id          String   @id @default(cuid())
+  orgId       String
+  hazardFactor String
+  location    String?
+  signType    String?
+  photoUrl    String?
+  status      String   @default("normal")
+  createdAt   DateTime @default(now())
+}
+
+model PPEItem {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  type        String   // 头部/眼部/听力/呼吸/手部/足部/全身
+  standard    String?
+  sizes       String?  // JSON: ["S","M","L","XL"]
+  unitPrice   Float?
+  stockQty    Int      @default(0)
+  status      String   @default("active")
+  createdAt   DateTime @default(now())
+}
+
+model PPEIssue {
+  id          String   @id @default(cuid())
+  orgId       String
+  userId      String
+  ppeItemId   String
+  size        String?
+  quantity    Int      @default(1)
+  applyReason String?
+  applyDate   DateTime
+  approveStatus String @default("pending") // pending/approved/rejected
+  approverId  String?
+  approveTime DateTime?
+  issueStatus String   @default("pending") // pending/issued
+  issueDate   DateTime?
+  issueBy     String?
+  createdAt   DateTime @default(now())
+}
+
+// ===================== 应急预案 (模块11) =====================
+
+model EmergencyPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  planType    String   // comprehensive/special/on_site
+  year        Int
+  content     String?
+  fileUrl     String?
+  version     Int      @default(1)
+  status      String   @default("draft") // draft/published/archived
+  publishTime DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DrillPlan {
+  id          String   @id @default(cuid())
+  orgId       String
+  planType    String   // annual/monthly
+  year        Int
+  month       Int?
+  title       String
+  drillDate   DateTime?
+  location    String?
+  form        String?  // 桌面演练/实战演练
+  organizerId String?
+  status      String   @default("draft") // draft/approved/in_progress/completed/delayed/cancelled
+  planFileUrl String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model DrillRecord {
+  id          String   @id @default(cuid())
+  planId      String
+  drillDate   DateTime
+  location    String?
+  photos      String?  // JSON: [urls]
+  videos      String?  // JSON: [urls]
+  participants String? // JSON: [userIds]
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+}
+
+model DrillAssessment {
+  id          String   @id @default(cuid())
+  recordId    String
+  assessorId  String
+  applicabilityScore Float?
+  timelinessScore Float?
+  effectivenessScore Float?
+  conclusion  String?
+  suggestions String?
+  reportFileUrl String?
+  approveStatus String @default("pending") // pending/reviewed/published
+  createdAt   DateTime @default(now())
+}
+
+model EmergencyTeam {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  teamType    String   // full_time/part_time/organization
+  leaderId    String?
+  members     String?  // JSON: [{userId, role}]
+  specialty   String?
+  contactPhone String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EmergencySupplies {
+  id          String   @id @default(cuid())
+  orgId       String
+  name        String
+  type        String?
+  quantity    Int      @default(0)
+  unit        String?
+  purpose     String?
+  location    String?
+  checkDate   DateTime?
+  status      String   @default("normal")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 事故调查和处理 (模块12) =====================
+
+model AccidentReport {
+  id              String   @id @default(cuid())
+  orgId           String
+  accidentNo      String
+  accidentType    String   // 工亡/重伤/轻伤/职业病
+  accidentLevel   String   @default("general") // general/major
+  title           String
+  location        String?
+  happenTime      DateTime
+  reportTime      DateTime
+  reporterId      String
+  description     String?
+  initialHandling String?
+  status          String   @default("draft") // draft/submitted/reviewed/archived
+  photos          String?  // JSON
+  fileUrl         String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AccidentInvestigation {
+  id              String   @id @default(cuid())
+  reportId        String
+  orgId           String
+  investigationGroup String? // JSON: [{userId, role}]
+  startDate       DateTime?
+  endDate         DateTime?
+  directCause     String?
+  indirectCause   String?
+  rootCause       String?
+  analysisMethod  String?  // fishbone/fault_tree/rca
+  reportFileUrl   String?
+  status          String   @default("pending") // pending/in_progress/completed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AccidentActionPlan {
+  id          String   @id @default(cuid())
+  investigationId String
+  description String
+  responsibleId String?
+  deadline    DateTime?
+  status      String   @default("pending") // pending/in_progress/completed/overdue
+  verifyResult String?
+  verifyBy    String?
+  verifyTime  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model AccidentCommunication {
+  id          String   @id @default(cuid())
+  reportId    String
+  title       String
+  content     String?
+  fileUrl     String?
+  publishBy   String?
+  publishTime DateTime?
+  studyStatus String   @default("pending") // pending/studied/examined
+  studySign   String?
+  examScore   Float?
+  createdAt   DateTime @default(now())
+}
+
+model AccidentResponsibility {
+  id            String   @id @default(cuid())
+  reportId      String
+  responsibleUser String
+  responsibilityType String // major/secondary
+  handleResult  String?
+  handleDate    DateTime?
+  fileUrl       String?
+  createdAt     DateTime @default(now())
+}
+
+model AccidentArchive {
+  id          String   @id @default(cuid())
+  reportId    String
+  archiveType String
+  fileUrl     String?
+  fileContent String?
+  createdAt   DateTime @default(now())
+}
+
+// ===================== 绩效评定和持续改进 (模块13) =====================
+
+model PerformanceReview {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  reviewType  String   // internal_audit/standardization_assessment
+  title       String
+  scope       String?
+  assessorId  String?
+  startDate   DateTime?
+  endDate     DateTime?
+  score       Float?
+  result      String?
+  reportFileUrl String?
+  status      String   @default("draft") // draft/in_progress/completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model ContinuousImprovement {
+  id          String   @id @default(cuid())
+  orgId       String
+  reviewId    String?
+  title       String
+  gap         String?
+  improvementPlan String?
+  responsibleId String?
+  deadline    DateTime?
+  status      String   @default("pending") // pending/in_progress/completed
+  verifyResult String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 个人工作台 & 通知 (模块14) =====================
+
+model TodoItem {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  module      String   // 来源模块
+  refId       String?  // 关联记录ID
+  refType     String?
+  priority    Int      @default(0)
+  dueDate     DateTime?
+  status      String   @default("pending") // pending/in_progress/completed/overdue
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  content     String?
+  type        String   // todo/alert/warning/system
+  module      String?
+  refId       String?
+  level       String   @default("info") // info/warning/danger
+  isRead      Boolean  @default(false)
+  readAt      DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// ===================== 安全观察 (模块7补充) =====================
+
+model WorkSafetyCheck {
+  id          String   @id @default(cuid())
+  orgId       String
+  checkType   String   // pre_casting/rigging/emulsion/waste_warehouse/fire_extinguisher
+  checker     String
+  checkDate   DateTime
+  items       String?  // JSON: [{name, result, remark}]
+  result      String   // normal/abnormal
+  issues      String?
+  photos      String?
+  createdAt   DateTime @default(now())
+}
+
+model DeepCastMonitor {
+  id          String   @id @default(cuid())
+  orgId       String
+  cameraId    String?
+  cameraName  String?
+  alarmType   String   // personnel/craft
+  alarmLevel  String   @default("warning") // warning/danger/critical
+  alarmTime   DateTime
+  description String?
+  imageUrl    String?
+  status      String   @default("active") // active/acknowledged/closed
+  acknowledgeBy String?
+  acknowledgeTime DateTime?
+  createdAt   DateTime @default(now())
+}
+
+// ===================== 预测预警 =====================
+
+model SafetyScore {
+  id          String   @id @default(cuid())
+  orgId       String
+  orgName     String
+  year        Int
+  month       Int?
+  trainingScore Float   @default(0)
+  hazardScore Float     @default(0)
+  violationScore Float @default(0)
+  accidentScore Float   @default(0)
+  newEmployeeScore Float @default(0)
+  hpScore     Float     @default(0)
+  totalScore  Float     @default(0)
+  alertLevel  String   @default("green") // green/yellow/orange/red
+  detail      String?  // JSON: 明细数据
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

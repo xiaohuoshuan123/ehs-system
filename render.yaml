@@ -1,0 +1,69 @@
+# Render Blueprint - 永杰集团 EHS 系统一键部署
+# https://render.com/docs/blueprint-spec
+
+services:
+  # ===== PostgreSQL 数据库 =====
+  - type: postgresql
+    name: ehs-postgres
+    plan: free
+    databaseName: ehs
+    user: ehs
+    region: singapore  # 亚洲区，国内访问相对快
+    # 生产环境可改为磁盘型: plan: starter + ipAllowlist: []
+
+  # ===== 后端 API (Node.js) =====
+  - type: web
+    name: ehs-backend
+    runtime: node
+    plan: starter  # 免费层会休眠，演示用 starter 更稳定
+    region: singapore
+    repo: https://github.com/YOUR-GITHUB-USER/YOUR-REPO.git  # 改成你的
+    branch: main
+    buildCommand: npm ci && npx prisma generate
+    startCommand: node src/index.js
+    preDeployCommand: node docker-entrypoint.sh --migrate-only
+    workingDirectory: backend
+    env: node
+    nodeVersion: 20.11.1
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "10000"  # Render 自动分配端口，用 10000 占位即可
+      - key: DATABASE_URL
+        fromService:
+          type: postgresql
+          name: ehs-postgres
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true  # Render 自动生成随机密钥
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: UPLOAD_DIR
+        value: ./uploads
+      - key: ALLOWED_ORIGINS
+        value: "https://ehs-frontend.onrender.com"
+    disk:  # 附件持久化
+      name: uploads
+      mountPath: /app/uploads
+
+  # ===== 前端静态站点 =====
+  - type: web
+    name: ehs-frontend
+    runtime: static
+    plan: starter
+    region: singapore
+    repo: https://github.com/YOUR-GITHUB-USER/YOUR-REPO.git  # 改成你的
+    branch: main
+    buildCommand: npm ci && npx vite build
+    publishPath: dist
+    workingDirectory: frontend
+    staticShell: "#!/bin/sh\nset -e\n[ \"$HTTP_X_RELOAD_REQUEST\" = \"true\" ] && echo 0\ncat index.html"
+    headers:
+      - path: /(.*)
+        headers:
+          - key: Cache-Control
+            value: public, max-age=3600
+          - key: Vary
+            value: "*"

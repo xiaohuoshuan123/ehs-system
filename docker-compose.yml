@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # ===== MySQL 数据库 (可选，默认用 SQLite) =====
+  # 默认使用 SQLite 单文件数据库，无需数据库服务
+  # 需要多人高并发时，启用 MySQL: 删除 sqlite 注释 + 修改 backend/.env
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: ehs-mysql
+  #   restart: unless-stopped
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
+  #     MYSQL_DATABASE: ${MYSQL_DATABASE:-ehs}
+  #     MYSQL_USER: ${MYSQL_USER:-ehs}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-ehs_pass}
+  #   command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--default-time-zone=+08:00"]
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql-data:/var/lib/mysql
+  #   networks:
+  #     - ehs-net
+  #   healthcheck:
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # ===== 后端 API 服务 =====
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: ehs-backend
+    restart: unless-stopped
+    env_file: docker/.env
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
+      # SQLite 默认
+      # - DATABASE_URL=file:/app/prisma/dev.db
+      # 切 MySQL 时取消注释（需同时启用上方 mysql 服务 + 修改 schema.prisma provider）
+      # - DATABASE_URL=mysql://ehs:ehs_pass@mysql:3306/ehs
+      # - DIRECT_URL=mysql://root:root123@mysql:3306/ehs
+    ports:
+      - "3001:3001"
+    volumes:
+      # 持久化数据库和上传文件
+      - ./data/db:/app/prisma
+      - ./data/uploads:/app/uploads
+    networks:
+      - ehs-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ===== 前端 Nginx 服务 =====
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: ehs-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - ehs-net
+
+networks:
+  ehs-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
