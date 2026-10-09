@@ -88,6 +88,45 @@ const routes = [
       { path: 'performance', component: () => import('../views/performance/Performance.vue'), meta: { title: '绩效评定', group: '绩效改进' } },
       { path: 'improvement', component: () => import('../views/performance/Improvement.vue'), meta: { title: '持续改进', group: '绩效改进' } },
       { path: 'safety-kpi', component: () => import('../views/performance/SafetyKpi.vue'), meta: { title: '安全金字塔KPI', group: '绩效改进' } },
+
+      // ==================== GB/T 33000-2025 新增模块 ====================
+
+      // 领导作用 (第4章)
+      { path: 'leadership', component: () => import('../views/orgStructure/Leadership.vue'), meta: { title: '安全领导力', group: '领导作用' } },
+      { path: 'leadership-evaluation', component: () => import('../views/orgStructure/LeadershipEvaluation.vue'), meta: { title: '安全履职评价', group: '领导作用' } },
+
+      // 基础保障 - 科技保障 (第5章)
+      { path: 'technology-protection', component: () => import('../views/regulation/TechnologyProtection.vue'), meta: { title: '科技保障', group: '基础保障' } },
+
+      // 策划 - 安全理念 & 信息沟通 (第6章)
+      { path: 'safety-philosophy', component: () => import('../views/regulation/SafetyPhilosophy.vue'), meta: { title: '安全理念', group: '策划' } },
+      { path: 'safety-communication', component: () => import('../views/regulation/SafetyCommunication.vue'), meta: { title: '信息沟通', group: '策划' } },
+
+      // 隐患排查治理 - 重大事故隐患 (第8章)
+      { path: 'major-hazard', component: () => import('../views/hazard/MajorHazard.vue'), meta: { title: '重大事故隐患', group: '隐患治理' } },
+
+      // 人员管理 - 人员准入 & 不安全行为 (第9章)
+      { path: 'personnel-entry', component: () => import('../views/training/PersonnelEntry.vue'), meta: { title: '人员准入', group: '人员管理' } },
+      { path: 'unsafe-behavior', component: () => import('../views/training/UnsafeBehavior.vue'), meta: { title: '不安全行为管控', group: '人员管理' } },
+
+      // 现场管理 - 异常处置 (第10章)
+      { path: 'abnormal-handling', component: () => import('../views/workSafety/AbnormalHandling.vue'), meta: { title: '异常处置', group: '现场管理' } },
+
+      // 检查评价 (第12章)
+      { path: 'safety-inspection', component: () => import('../views/performance/SafetyInspection.vue'), meta: { title: '安全检查', group: '检查评价' } },
+      { path: 'performance-assessment', component: () => import('../views/performance/PerformanceAssessment.vue'), meta: { title: '绩效评价', group: '检查评价' } },
+
+      // 持续改进 - 未遂事故 (第13章)
+      { path: 'near-miss', component: () => import('../views/accident/NearMiss.vue'), meta: { title: '未遂事故', group: '持续改进' } },
+
+      // ==================== GB/T 46884.1-2025 新增模块 ====================
+
+      // 作业行为管理 (AI视频监控)
+      { path: 'work-behavior', component: () => import('../views/workSafety/WorkBehavior.vue'), meta: { title: '作业行为管理', group: '作业安全' } },
+
+      // 隐患治理成效评估
+      { path: 'hazard-evaluation', component: () => import('../views/hazard/HazardEvaluation.vue'), meta: { title: '隐患治理评估', group: '隐患治理' } },
+
       // 系统管理
       { path: 'org', component: () => import('../views/system/Organization.vue'), meta: { title: '组织机构', group: '系统管理' } },
       { path: 'user', component: () => import('../views/system/User.vue'), meta: { title: '用户管理', group: '系统管理' } },

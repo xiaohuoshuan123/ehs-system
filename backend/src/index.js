@@ -145,6 +145,44 @@ app.use('/api/improvement', require('./routes/improvement'));
 // 安全金字塔 KPI
 app.use('/api/safety-kpi', require('./routes/safetyKpi'));
 
+// ==================== GB/T 33000-2025 新增模块 ====================
+
+// 领导作用 (第4章)
+app.use('/api/leadership', require('./routes/leadership'));
+app.use('/api/leadership-evaluation', require('./routes/leadershipEvaluation'));
+
+// 基础保障 - 科技保障 (第5章)
+app.use('/api/technology-protection', require('./routes/technologyProtection'));
+
+// 策划 - 安全理念 & 信息沟通 (第6章)
+app.use('/api/safety-philosophy', require('./routes/safetyPhilosophy'));
+app.use('/api/safety-communication', require('./routes/safetyCommunication'));
+
+// 隐患排查治理 - 重大事故隐患 (第8章)
+app.use('/api/major-hazard', require('./routes/majorHazard'));
+
+// 人员管理 - 人员准入 & 不安全行为 (第9章)
+app.use('/api/personnel-entry', require('./routes/personnelEntry'));
+app.use('/api/unsafe-behavior', require('./routes/unsafeBehavior'));
+
+// 现场管理 - 异常处置 (第10章)
+app.use('/api/abnormal-handling', require('./routes/abnormalHandling'));
+
+// 检查评价 (第12章)
+app.use('/api/safety-inspection', require('./routes/safetyInspection'));
+app.use('/api/performance-assessment', require('./routes/performanceAssessment'));
+
+// 持续改进 - 未遂事故 (第13章)
+app.use('/api/near-miss', require('./routes/nearMiss'));
+
+// ==================== GB/T 46884.1-2025 新增模块 ====================
+
+// 作业行为管理 (AI视频监控)
+app.use('/api/work-behavior', require('./routes/workBehavior'));
+
+// 隐患治理成效评估
+app.use('/api/hazard-evaluation', require('./routes/hazardEvaluation'));
+
 // 个人工作台
 app.use('/api/todo', require('./routes/todo'));
 app.use('/api/notification', require('./routes/notification'));

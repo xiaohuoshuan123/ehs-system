@@ -1375,3 +1375,303 @@ model SafetyScore {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ===================== 领导作用 (GB/T 33000-2025 第4章) =====================
+
+// 4.1 安全领导力记录
+model SafetyLeadership {
+  id          String   @id @default(cuid())
+  orgId       String
+  leaderName  String
+  leaderRole  String   // chairman/president/deputy/chief_engineer
+  leadershipType String  // philosophy_example/resource_support/risk_control/hazard_remediation/emergency/human_rights
+  content     String
+  date        DateTime
+  location    String?
+  participants String?  // JSON: 参与人员
+  photos      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 4.2 安全履职评价
+model LeadershipEvaluation {
+  id          String   @id @default(cuid())
+  orgId       String
+  leaderName  String
+  leaderRole  String
+  year        Int
+  quarter     Int?     // 1-4
+  evaluationPeriod String  // quarterly/semi_annual/annual
+  philosophyScore Float  @default(0)
+  exampleScore    Float  @default(0)
+  resourceScore   Float  @default(0)
+  riskControlScore Float @default(0)
+  hazardScore     Float  @default(0)
+  emergencyScore  Float  @default(0)
+  humanRightsScore Float @default(0)
+  totalScore    Float  @default(0)
+  grade         String   @default("excellent") // excellent/good/qualified/unqualified
+  remarks       String?
+  evaluator     String?
+  evaluatedAt   DateTime
+  resultApplied Boolean  @default(false) // 是否纳入绩效考核
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// ===================== 基础保障 (GB/T 33000-2025 第5章) =====================
+
+// 5.5 科技保障
+model TechnologyProtection {
+  id          String   @id @default(cuid())
+  orgId       String
+  type        String   // monitoring_warning/intelligent_system/robot_automation/digital_twin
+  name        String
+  description String?
+  vendor      String?
+  implementDate DateTime?
+  status      String   @default("planning") // planning/implementing/running/deprecated
+  investment  Float?
+  effectiveness String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 策划 (GB/T 33000-2025 第6章) =====================
+
+// 6.1 安全理念
+model SafetyPhilosophy {
+  id          String   @id @default(cuid())
+  orgId       String
+  content     String   // 安全理念内容
+  slogan      String?  // 安全口号
+  values      String?  // JSON: 核心价值观列表
+  version     Int      @default(1)
+  effectiveDate DateTime
+  description String?
+  status      String   @default("active") // active/archived
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 6.4 信息沟通
+model SafetyCommunication {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  type        String   // internal/external/government/union/contractor
+  channel     String   // meeting/document/training/newsletter/wechat
+  content     String
+  publisher   String
+  publishDate DateTime
+  audience    String?  // 受众
+  attachments String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 隐患排查治理 (GB/T 33000-2025 第8章) =====================
+
+// 8.3 重大事故隐患管理
+model MajorHazard {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  location    String
+  description String
+  riskLevel   String   @default("major") // major/critical
+  category    String   // chemical/equipment/environment/process/construction
+  discoveredBy String
+  discoveredAt DateTime
+  responsiblePerson String
+  remediationPlan String
+  deadline    DateTime?
+  status      String   @default("pending") // pending/remediating/verified/closed
+  verificationResult String?
+  verifiedBy  String?
+  verifiedAt  DateTime?
+  reportStatus String  @default("not_reported") // not_reported/reported/reported_verified
+  reportDate  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 人员管理 (GB/T 33000-2025 第9章) =====================
+
+// 9.1 人员准入
+model PersonnelEntry {
+  id          String   @id @default(cuid())
+  orgId       String
+  employeeName String
+  employeeNo  String?
+  position    String
+  department  String
+  entryDate   DateTime
+  education   String   @default("high_school") // primary/junior_high/high_school/college/graduate
+  trainingRecord String?  // JSON: 培训记录
+  skills      String?    // JSON: 技能等级
+  healthCheck String     @default("pending") // passed/pending/failed
+  physicalCondition String @default("normal") // normal/restricted
+  psychological String    @default("normal") // normal/attention
+  qualificationNo String?
+  qualificationExpire DateTime?
+  status      String   @default("active") // active/suspended/terminated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 9.3.3 不安全行为管控
+model UnsafeBehavior {
+  id          String   @id @default(cuid())
+  orgId       String
+  employeeName String
+  employeeNo  String?
+  behaviorType String  // smoking/missing_ppe/improper_operation/speed_racing/other
+  description String
+  location    String
+  date        DateTime
+  reportedBy  String
+  handlingType String  @default("education") // education/warning/punishment
+  handlingResult String?
+  photos      String?
+  status      String   @default("pending") // pending/handled/closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 现场管理 (GB/T 33000-2025 第10章) =====================
+
+// 10.4 异常处置
+model AbnormalHandling {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  location    String
+  abnormalType String  @default("equipment") // equipment/process/environment/personnel/other
+  description String
+  discoveredBy String
+  discoveredAt DateTime
+  riskLevel   String   @default("low") // low/medium/high/critical
+  immediateAction String
+  responsiblePerson String
+  handlingPlan String
+  handlingResult String?
+  completedAt DateTime?
+  reviewResult String?  // 回顾总结
+  status      String   @default("pending") // pending/handling/completed/reviewed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 检查评价 (GB/T 33000-2025 第12章) =====================
+
+// 12.1 安全检查
+model SafetyInspection {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  type        String   @default("routine") // routine/special/comprehensive/internal_audit
+  inspector   String
+  inspectionDate DateTime
+  location    String
+  items       String   // JSON: [{item, requirement, result, score}]
+  totalScore  Float    @default(0)
+  issuesFound String?
+  improvementRequired Boolean @default(false)
+  status      String   @default("pending") // pending/completed/improved
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 12.2 绩效评价
+model PerformanceAssessment {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  period      String   @default("annual") // quarterly/semi_annual/annual
+  leaderScore Float    @default(0)
+  targetScore Float    @default(0)
+  organizationScore Float @default(0)
+  riskControlScore Float @default(0)
+  hazardScore Float    @default(0)
+  personnelScore Float @default(0)
+  siteScore   Float    @default(0)
+  emergencyScore Float @default(0)
+  improvementScore Float @default(0)
+  totalScore  Float    @default(0)
+  grade       String   @default("excellent") // excellent/good/qualified/unqualified
+  summary     String?
+  evaluator   String?
+  evaluatedAt DateTime?
+  status      String   @default("draft") // draft/completed/approved
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 持续改进 (GB/T 33000-2025 第13章) =====================
+
+// 13.1 未遂事故管理
+model NearMiss {
+  id          String   @id @default(cuid())
+  orgId       String
+  title       String
+  location    String
+  description String
+  potentialSeverity String @default("serious") // minor/serious/catastrophic
+  reportedBy  String
+  reportedAt  DateTime
+  analysis    String?  // 原因分析
+  correctiveAction String?
+  completedAt DateTime?
+  status      String   @default("reported") // reported/analyzing/corrected/closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ===================== 工业互联网安全生产 (GB/T 46884.1-2025) =====================
+
+// 作业行为管理 (AI视频监控)
+model WorkBehaviorMonitoring {
+  id          String   @id @default(cuid())
+  orgId       String
+  cameraId    String?
+  cameraName  String?
+  cameraLocation String
+  behaviorType String  @default("missing_helmet") // missing_helmet/missing_ppe/smoking/fall_risk/intrusion/unsafe_action
+  riskLevel   String   @default("medium") // low/medium/high/critical
+  detectTime  DateTime
+  description String?
+  imageUrl    String?
+  videoUrl    String?
+  handledBy   String?
+  handledAt   DateTime?
+  handlingResult String?
+  status      String   @default("active") // active/handled/closed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 隐患治理成效评估
+model HazardRemediationEvaluation {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  quarter     Int?
+  totalHazards Int     @default(0)
+  remediatedHazards Int @default(0)
+  majorHazards Int     @default(0)
+  majorRemediated Int  @default(0)
+  overdueHazards Int   @default(0)
+  remediationRate Float @default(0)
+  averageRemediationDays Float @default(0)
+  evaluationScore Float @default(0)
+  evaluationLevel String @default("qualified") // excellent/good/qualified/poor
+  evaluationContent String?
+  evaluator   String?
+  evaluatedAt DateTime?
+  status      String   @default("draft") // draft/completed
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
