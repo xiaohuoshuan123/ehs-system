@@ -1,7 +1,7 @@
 // ============================================================
 // 永杰集团智慧安全管理系统 - 公共工具
 // ============================================================
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const express = require('express');
@@ -125,6 +125,42 @@ function friendlyError(e) {
   return msg;
 }
 
+// ============================================================
+// 字段白名单过滤
+//   不同模型字段差异大：部分模型没有 createdById/updatedById，
+//   甚至没有 updatedAt。Prisma 对未知字段直接抛
+//   "Unknown argument `xxx`" 并中断整个请求。
+//   用 DMMF 取模型实际字段名做白名单，未知字段自动丢弃。
+// ============================================================
+// 缓存模型名→字段名集合（DMMF 启动后不变）
+const _fieldCache = new Map();
+function allowedFields(m, modelName) {
+  let cached = _fieldCache.get(modelName);
+  if (cached) return cached;
+  try {
+    // Prisma 5.x: Prisma.dmmf.datamodel.models 暴露完整模型定义
+    const modelDef = Prisma.dmmf.datamodel.models.find(md => md.name === modelName);
+    if (modelDef) {
+      cached = new Set(modelDef.fields.map(f => f.name));
+      _fieldCache.set(modelName, cached);
+      return cached;
+    }
+  } catch {}
+  _fieldCache.set(modelName, null);
+  return null; // 获取失败时不过滤，保持原行为
+}
+
+// 仅保留模型真实存在的字段；无白名单时原样返回
+function onlyKnownFields(m, modelName, d) {
+  const allow = allowedFields(m, modelName);
+  if (!allow) return d;
+  const out = {};
+  for (const [k, v] of Object.entries(d)) {
+    if (allow.has(k)) out[k] = v;
+  }
+  return out;
+}
+
 // ---- 通用CRUD生成器 ----
 // options: { filters: {field:'contains'...}, exact: ['field'...], include: [...] }
 function crud(modelName, opts = {}) {
@@ -136,7 +172,9 @@ function crud(modelName, opts = {}) {
 
   r.post('/', auth, async (req, res) => {
     try {
-      const d = sanitizeData({ ...req.body, createdById: req.user.id, createdAt: new Date() });
+      // 仅注入 createdAt（Prisma @default(now()) 可处理，显式设置以保兼容）；
+      // 不注入 createdById —— 多数模型并无此字段
+      const d = onlyKnownFields(m, modelName, sanitizeData({ ...req.body, createdAt: new Date() }));
       const result = await m.create({ data: d });
       ok(res, result, '创建成功');
     } catch (e) { fail(res, friendlyError(e)); }
@@ -175,7 +213,9 @@ function crud(modelName, opts = {}) {
   r.put('/:id', auth, async (req, res) => {
     try {
       const { id, ...data } = req.params;
-      const d = sanitizeData({ ...req.body, updatedById: req.user.id, updatedAt: new Date() });
+      // 不注入 updatedById（多数模型无此字段）；
+      // updatedAt 由 Prisma @updatedAt 自动维护，手动传入可能冲突，故也不注入
+      const d = onlyKnownFields(m, modelName, sanitizeData({ ...req.body }));
       const result = await m.update({ where: { id }, data: d });
       ok(res, result, '更新成功');
     } catch (e) { fail(res, friendlyError(e)); }
