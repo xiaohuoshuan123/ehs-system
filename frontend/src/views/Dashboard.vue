@@ -176,7 +176,7 @@ onMounted(async () => {
     })
   }
 
-  // 安全金字塔 (7层 DuPont 模型) - 漏斗图，上窄下宽
+  // 安全金字塔 (7层 DuPont 模型) - 等边三角形
   // Tier1 死亡(红) → Tier2 损失工作日(橙) → Tier3 工作受限(黄) → Tier4 可记录(浅黄)
   // → Tier5 急救箱(绿) → Tier6 无伤害(粉) → Tier7 安全观察(蓝)
   const p = dashData?.pyramid || null
@@ -190,37 +190,88 @@ onMounted(async () => {
       { name: '无伤害事故', value: p.noInjury || 0, color: '#e91e63' },
       { name: '安全观察', value: p.safetyObs || 0, color: '#409eff' },
     ]
-    const maxVal = Math.max(...tiers.map(t => t.value || 1), 1)
+    
     const chart = echarts.init(pyramidChartRef.value)
-    chart.setOption({
-      tooltip: { trigger: 'item', formatter: '{b}: {c}' },
-      legend: { bottom: 0, type: 'scroll' },
-      series: [{
-        type: 'pie',
-        radius: ['5%', '85%'],
-        center: ['50%', '50%'],
-        roseType: 'area',
-        itemStyle: { borderRadius: 6 },
-        data: tiers.reverse(), // 从底到顶排列(大→小)
-        label: {
-          show: true,
-          formatter: (p) => {
-            const pct = p.data?.value ? Math.round(p.data.value / maxVal * 100) : 0
-            return `{name|${p.data?.name}}\n{val|${p.data?.value ?? 0}}`
-          },
-          rich: {
-            name: { fontSize: 12, color: '#606266', fontWeight: 'bold' },
-            val: { fontSize: 16, color: '#303133', fontWeight: 'bold' }
-          }
+    
+    // 等边三角形参数
+    const w = 220, h = 200
+    const layerH = h / 7
+    const elements = []
+    
+    // 从顶到底绘制7层
+    for (let i = 0; i < 7; i++) {
+      const tier = tiers[i]
+      
+      // 下边宽度（靠近底边）
+      const bottomWidth = w * (i + 1) / 7
+      
+      // 上边宽度（靠近顶点，i=0时是三角形）
+      const topWidth = w * i / 7
+      
+      // y 坐标（从下往上）
+      const yBottom = h - i * layerH
+      const yTop = h - (i + 1) * layerH
+      
+      // 四个顶点（梯形）
+      const x1 = (w - bottomWidth) / 2  // 左下角
+      const x2 = (w + bottomWidth) / 2  // 右下角
+      const x3 = (w + topWidth) / 2  // 右上角
+      const x4 = (w - topWidth) / 2  // 左上角
+      
+      const points = [
+        [x1, yBottom],
+        [x2, yBottom],
+        [x3, yTop],
+        [x4, yTop]
+      ]
+      
+      // 梯形/三角形填充
+      elements.push({
+        type: 'polygon',
+        shape: { points: points },
+        style: { fill: tier.color, stroke: '#fff', lineWidth: 1 },
+        z: 100 + i
+      })
+      
+      // 标签文字
+      const labelY = (yBottom + yTop) / 2
+      const isLightColor = ['#d4dcb5', '#fab000', '#67c23a'].includes(tier.color)
+      elements.push({
+        type: 'text',
+        style: {
+          text: `${tier.name}: ${tier.value}`,
+          x: w / 2,
+          y: labelY,
+          textAlign: 'center',
+          textVerticalAlign: 'middle',
+          fontSize: 11,
+          fill: isLightColor ? '#333' : '#fff',
+          fontWeight: 'bold'
         },
-        labelLine: { length: 15, lineStyle: { width: 1 } }
-      }]
+        z: 101 + i
+      })
+    }
+    
+    // 底部标题
+    elements.push({
+      type: 'text',
+      style: {
+        text: `数据来源: ${p.source === 'manual' ? p.period : '系统推导'}`,
+        x: w / 2,
+        y: h + 15,
+        textAlign: 'center',
+        fontSize: 10,
+        fill: '#909399'
+      }
     })
-    // 叠加标题文字
-    const titleEl = document.createElement('div')
-    titleEl.style.cssText = 'text-align:center;color:#909399;font-size:12px;margin-top:4px'
-    titleEl.textContent = `数据来源: ${p.source === 'manual' ? p.period : '系统推导'}`
-    chart.getDom().appendChild(titleEl)
+    
+    chart.setOption({
+      graphic: {
+        elements: elements,
+        left: 'center',
+        top: 'middle'
+      }
+    })
   }
 })
 </script>
