@@ -18,11 +18,17 @@
 
     <!-- 图表区域 -->
     <el-row :gutter="16" style="margin-top:16px">
-      <el-col :span="12">
+      <el-col :span="8">
         <el-card><template #header><span>隐患分类统计</span></template><div ref="hazardChartRef" style="height:300px"></div></el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="8">
         <el-card><template #header><span>风险等级分布</span></template><div ref="riskChartRef" style="height:300px"></div></el-card>
+      </el-col>
+      <el-col :span="8">
+        <el-card>
+          <template #header><span>海因里希三角 · 1:29:300</span></template>
+          <div ref="heinrichChartRef" style="height:300px"></div>
+        </el-card>
       </el-col>
     </el-row>
 
@@ -74,6 +80,7 @@ const router = useRouter()
 
 const hazardChartRef = ref()
 const riskChartRef = ref()
+const heinrichChartRef = ref()
 const statCards = ref([])
 const todoCount = ref(0)
 const recentTodos = ref([])
@@ -138,6 +145,43 @@ onMounted(async () => {
         value: r._count._all,
         itemStyle: { color: { low: '#67c23a', general: '#e6a23c', major: '#f56c6c', major_above: '#f56c6c' }[r.riskLevel] || '#409eff' }
       })) }]
+    })
+  }
+
+  // 海因里希三角 (Heinrich's Triangle) - 1:29:300
+  // 经典安全法则：每 1 起重伤事故，通常伴随 29 起轻伤和 300 起无伤害事件
+  // 实际比例与经典值对比，用横向条形图直观展示
+  const hz = dashData?.heinrich || { serious: 0, minor: 0, unrecorded: 0, ratio: { minor: 0, unrecorded: 0 } }
+  const rMinor = hz.ratio?.minor || 0
+  const rUncord = hz.ratio?.unrecorded || 0
+  if (heinrichChartRef.value) {
+    const chart = echarts.init(heinrichChartRef.value)
+    chart.setOption({
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      legend: { bottom: 0, data: ['实际比例', '经典比例 1:29:300'] },
+      grid: { left: '3%', right: '8%', bottom: '12%', top: '8%', containLabel: true },
+      xAxis: { type: 'value', name: '比例(以重伤为1)', axisLabel: { formatter: '{value}' } },
+      yAxis: {
+        type: 'category',
+        data: ['无伤害事件', '轻伤', '重伤及以上'],
+        inverse: false
+      },
+      series: [
+        {
+          name: '实际比例',
+          type: 'bar',
+          data: [rUncord, rMinor, 1],
+          itemStyle: { color: (p) => ['#f56c6c', '#e6a23c', '#409eff'][p.dataIndex] },
+          label: { show: true, position: 'right', formatter: '{c}' }
+        },
+        {
+          name: '经典比例 1:29:300',
+          type: 'bar',
+          data: [300, 29, 1],
+          itemStyle: { color: 'rgba(0,0,0,0.1)', borderColor: '#909399', borderType: 'dashed' },
+          label: { show: false }
+        }
+      ]
     })
   }
 })
