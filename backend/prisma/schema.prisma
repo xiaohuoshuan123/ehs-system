@@ -1484,8 +1484,8 @@ model MajorHazard {
   category    String   // chemical/equipment/environment/process/construction
   discoveredBy String
   discoveredAt DateTime
-  responsiblePerson String
-  remediationPlan String
+  responsiblePerson String @default("")
+  remediationPlan String   @default("")
   deadline    DateTime?
   status      String   @default("pending") // pending/remediating/verified/closed
   verificationResult String?
@@ -1529,7 +1529,7 @@ model UnsafeBehavior {
   employeeNo  String?
   behaviorType String  // smoking/missing_ppe/improper_operation/speed_racing/other
   description String
-  location    String
+  location    String   @default("")
   date        DateTime
   reportedBy  String
   handlingType String  @default("education") // education/warning/punishment
@@ -1553,9 +1553,9 @@ model AbnormalHandling {
   discoveredBy String
   discoveredAt DateTime
   riskLevel   String   @default("low") // low/medium/high/critical
-  immediateAction String
-  responsiblePerson String
-  handlingPlan String
+  immediateAction String @default("")
+  responsiblePerson String @default("")
+  handlingPlan String @default("")
   handlingResult String?
   completedAt DateTime?
   reviewResult String?  // 回顾总结
