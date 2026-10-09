@@ -1252,6 +1252,31 @@ model PerformanceReview {
   updatedAt   DateTime @updatedAt
 }
 
+// ===================== 安全金字塔 KPI =====================
+// 7 层事故金字塔 + 安全观察 / STOP
+// 图片层级（上→下）：
+//   1. 死亡                2. 损失工作日
+//   3. 工作受限            4. 可记录（医疗/工伤申报）
+//   5. 急救箱事故          6. 无伤害事故
+//   7. 安全观察            8. STOP（另计）
+model SafetyKpi {
+  id            String   @id @default(cuid())
+  orgId         String
+  year          Int
+  month         Int      @default(0) // 0=年度累计, 1-12=月度
+  fatalities    Int      @default(0) // 死亡
+  lostWorkdays  Int      @default(0) // 损失工作日
+  workRestricted Int     @default(0) // 工作受限
+  recordable    Int      @default(0) // 可记录（医疗/工伤申报）
+  firstAid      Int      @default(0) // 急救箱事故
+  noInjury      Int      @default(0) // 无伤害事故
+  safetyObs     Int      @default(0) // 安全观察
+  stopCount     Int      @default(0) // STOP
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
 model ContinuousImprovement {
   id          String   @id @default(cuid())
   orgId       String
