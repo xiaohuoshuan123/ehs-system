@@ -5,6 +5,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Render 构建时通过环境变量注入后端 API 地址（不依赖 .env 文件）
+ARG VITE_API_BASE_URL=/api
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
