@@ -1,9 +1,9 @@
 <template>
   <div class="page-container">
     <!-- 搜索栏 -->
-    <div class="search-bar" v-if="searchFields.length">
-      <el-input v-for="sf in searchFields" :key="sf.field" v-model="searchParams[sf.field]" :placeholder="sf.label" clearable style="width:200px" @keyup.enter="loadData" />
-      <el-select v-for="sf in searchFields.filter(f => f.type === 'select')" :key="sf.field" v-model="searchParams[sf.field]" :placeholder="sf.label" clearable style="width:200px">
+    <div class="search-bar" v-if="allSearchFields.length">
+      <el-input v-for="sf in allSearchFields.filter(f => f.type !== 'select')" :key="sf.field" v-model="searchParams[sf.field]" :placeholder="sf.label" clearable style="width:200px" @keyup.enter="loadData" />
+      <el-select v-for="sf in allSearchFields.filter(f => f.type === 'select')" :key="sf.field" v-model="searchParams[sf.field]" :placeholder="sf.label" clearable style="width:200px" :multiple="Array.isArray(searchParams[sf.field])" collapse-tags @change="loadData">
         <el-option v-for="opt in sf.options" :key="opt.value" :label="opt.label" :value="opt.value" />
       </el-select>
       <el-button type="primary" @click="loadData"><el-icon><Search /></el-icon>搜索</el-button>
@@ -102,6 +102,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
 import { crudApi } from '../api'
 
 const props = defineProps({
@@ -111,6 +112,8 @@ const props = defineProps({
 const token = localStorage.getItem('ehs_token')
 const { config } = props
 const api = crudApi(config.endpoint)
+const route = useRoute()
+const router = useRouter()
 
 // 数据
 const loading = ref(false)
@@ -122,6 +125,21 @@ const searchParams = reactive({})
 const searchFields = computed(() => config.searchFields || [])
 const columns = computed(() => config.columns || [])
 const formFields = computed(() => config.formFields || [])
+// 筛选字段：优先用模块显式配置的 searchFields；未配置时从 formFields 自动派生
+// （只取 select / input，日期与多行文本不适合做筛选条件）
+const allSearchFields = computed(() => {
+  if (searchFields.value.length) return searchFields.value
+  const seen = new Set(searchFields.value.map(f => f.field))
+  const derived = []
+  for (const f of formFields.value) {
+    if (seen.has(f.field) || f.disabled) continue
+    if (f.field === 'orgId' || f.type === 'textarea' || f.type === 'date'
+        || f.type === 'datetime' || f.type === 'number' || f.type === 'switch' || f.type === 'upload' || f.type === 'cascader') continue
+    seen.add(f.field)
+    derived.push({ field: f.field, label: f.label, type: f.type, options: f.options })
+  }
+  return derived
+})
 const formRules = computed(() => config.formRules || {})
 const statusMap = computed(() => config.statusMap || {})
 
@@ -137,8 +155,9 @@ const dialogTitle = computed(() => editingId.value ? '编辑' : '新增')
 
 function formatDate(d) { return d ? new Date(d).toLocaleString('zh-CN') : '' }
 
-async function loadData() {
+async function loadData(resetPage) {
   loading.value = true
+  if (resetPage) pagination.page = 1
   try {
     const params = { ...searchParams, page: pagination.page, pageSize: pagination.pageSize }
     Object.keys(params).forEach(k => { if (params[k] === '' || params[k] === null) delete params[k] })
@@ -151,8 +170,28 @@ async function loadData() {
 function resetSearch() {
   Object.keys(searchParams).forEach(k => searchParams[k] = '')
   pagination.page = 1
+  // 同步清空地址栏筛选参数，避免刷新后条件复活
+  router.replace({ path: route.path, query: {} })
   loadData()
 }
+
+// 从路由 query 读取预设筛选条件（仪表盘统计卡片跳转进入时带入）
+function applyRouteFilters() {
+  const valid = new Set(allSearchFields.value.map(f => f.field))
+  for (const [k, v] of Object.entries(route.query)) {
+    if (v != null && valid.has(k)) {
+      // 逗号分隔的多值 → 数组（el-select multiple），其余保持字符串
+      searchParams[k] = String(v).includes(',') ? String(v).split(',') : String(v)
+    }
+  }
+}
+
+onMounted(() => {
+  applyRouteFilters()
+  // URL 显式指定页码时优先（便于后续“下一页”直达场景）
+  if (route.query.page) pagination.page = Math.max(1, parseInt(route.query.page) || 1)
+  loadData()
+})
 
 function openDialog(row) {
   editingId.value = row?.id || null
@@ -220,7 +259,6 @@ function handleExport() {
   a.click()
 }
 
-onMounted(loadData)
 </script>
 
 <style scoped>
