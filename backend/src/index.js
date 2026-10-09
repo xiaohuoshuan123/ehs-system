@@ -159,7 +159,49 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ code: err.status || 500, message: err.message });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 [EHS] 后端服务: http://localhost:${PORT}`);
-  console.log(`📡 [EHS] API健康检查: http://localhost:${PORT}/api/health`);
+// ============================================================
+// 启动前自动迁移数据库（同步等待，确保表已创建）
+// ============================================================
+async function ensureDatabaseReady() {
+  const { execSync } = require('child_process');
+  const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+  const seedPath = path.resolve(__dirname, '../prisma/seed.js');
+
+  console.log('🔧 [DB] 开始数据库迁移...');
+  console.log(`   schema: ${schemaPath}`);
+  console.log(`   DATABASE_URL: ${(process.env.DATABASE_URL || '').substring(0, 30)}...`);
+
+  // 最多重试 8 次（40 秒）
+  for (let i = 1; i <= 8; i++) {
+    try {
+      console.log(`   第 ${i}/8 次尝试 prisma db push...`);
+      execSync(`npx prisma db push --schema="${schemaPath}" --skip-generate`, {
+        stdio: 'pipe',
+        timeout: 30000
+      });
+      console.log('✅ [DB] schema 同步成功');
+
+      // 执行种子数据
+      if (fs.existsSync(seedPath)) {
+        console.log('   执行种子数据...');
+        execSync(`node "${seedPath}"`, { stdio: 'pipe', timeout: 30000 });
+        console.log('✅ [DB] 种子数据完成');
+      }
+      return true;
+    } catch (err) {
+      const msg = err.stderr ? err.stderr.toString().substring(0, 200) : err.message;
+      console.error(`⏳ [DB] 第 ${i}/8 次失败: ${msg}`);
+      if (i < 8) await new Promise(r => setTimeout(r, 5000));
+    }
+  }
+  console.error('❌ [DB] 迁移超时，数据库表可能未创建');
+  return false;
+}
+
+// 启动服务
+ensureDatabaseReady().finally(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 [EHS] 后端服务: http://localhost:${PORT}`);
+    console.log(`📡 [EHS] API健康检查: http://localhost:${PORT}/api/health`);
+  });
 });
