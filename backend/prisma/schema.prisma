@@ -1675,3 +1675,150 @@ model HazardRemediationEvaluation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ===================== 十四、环保管理 (独立模块, 对标《排污许可分类管理名录》/GB 5085 土壤/GB 12348 噪声) =====================
+
+// 14.1 废水管理 (GB 21900 铝工业水污染物排放标准 / 重金属在线监测)
+model WastewaterEmission {
+  id              String   @id @default(cuid())
+  orgId           String
+  dischargePoint  String            // 排放口编号/名称
+  source          String            // 产生工序/污染源
+  category        String            // 类别: general_chemistry/cooling/domestic/heavy_metal
+  pollutants      String            // 主要污染物(重金属/SS/ COD/ 石油类等)
+  designFlow      Float?            // 设计流量 m3/h
+  measuredFlow    Float?            // 实测流量 m3/h
+  phRange         String?           // pH 实测范围
+  cod             Float?            // COD mg/L
+  ammoniaNitrogen Float?            // 氨氮 mg/L
+  heavyMetal      String?           // 重金属含量描述 (GB 21900 特征限值)
+  standardLimit   String?           // 执行标准限值
+  exceedance      String   @default("normal") // normal/exceeded
+  onlineMonitor   String   @default("no") // 在线监测: yes/no
+  treatmentProcess String          // 处理工艺/构筑物
+  measurementDate DateTime?
+  responsiblePerson String @default("")
+  remark          String   @default("")
+  status          String   @default("normal") // normal/abnormal/repair
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+// 14.2 废气管理 (GB 21901 铝冶炼/GB 16297 大气综合/挥发性有机物)
+model ExhaustEmission {
+  id            String   @id @default(cuid())
+  orgId         String
+  emissionSource String           // 排放源: 熔炼/铸轧/氧化/喷涂/酸洗
+  category      String            // 类别: so2/nox/vocs/particulate/fluorine
+  pollutant     String            // 具体污染物
+  stackHeight   Float?            // 排气筒高度 m
+  designRate    Float?            // 设计排放速率 kg/h
+  measuredRate  Float?            // 实测排放速率 kg/h
+  concentration Float?            // 实测浓度 mg/m3
+  standardLimit String?           // 执行限值
+  exceedance    String   @default("normal") // normal/exceeded
+  onlineMonitor String   @default("no")
+  treatmentDevice String          // 治理设施: 布袋除尘/湿法脱硫/蓄热焚烧等
+  measurementDate DateTime?
+  responsiblePerson String @default("")
+  remark        String   @default("")
+  status        String   @default("normal") // normal/abnormal/repair
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 14.3 固废管理 (危废台账 - 危废法/固废法, 产生-贮存-转移-处置全过程)
+model SolidWasteRecord {
+  id            String   @id @default(cuid())
+  orgId         String
+  wasteName     String            // 废物名称
+  wasteCode     String            // 危险废物废物代码 (GB 5085, 8位)
+  category      String            // general/solid/hazardous
+  hazardClass   String   @default("none") // none/toxicity/corrosive/flammable/infectious 等危险特性
+  originProcess String            // 产生工序
+  generationDate DateTime
+  quantity      Float?            // 数量 kg
+  unit          String   @default("kg")
+  storageLocation String          // 贮存场所/危废间位置
+  storageDays   Int?              // 贮存天数
+  transportUnit String            // 承运单位
+  carrierLicense String?          // 承运资质编号
+  transferManifest String?        // 转移联单编号
+  disposalMethod String           // 处置方式: incinerate/solidify/utilize
+  disposalUnit  String            // 处置单位
+  disposalUnitLicense String?     // 处置单位危废经营许可编号
+  manifestNo    String?           // 转移联单编号
+  responsiblePerson String @default("")
+  remark        String   @default("")
+  status        String   @default("generated") // generated/stored/transferred/disposed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 14.4 噪声管理 (GB 12348 工业企业厂界环境噪声排放标准, 昼间60dB/夜间50dB)
+model NoiseMonitoring {
+  id            String   @id @default(cuid())
+  orgId         String
+  boundaryPoint String            // 厂界测点: 东/南/西/北/东南角等
+  pointCode     String?           // 测点编号
+  noiseSource   String            // 声源: 风机/水泵/破碎机/运输车辆
+  dayValue      Float?            // 昼间等效声级 Leq dB(A)
+  nightValue    Float?            // 夜间等效声级 Leq dB(A)
+  standardClass String   @default("2") // 2/3/4a 类声环境功能区
+  dayLimit      Float?            // 昼间限值
+  nightLimit    Float?            // 夜间限值
+  exceedance    String   @default("normal") // normal/exceeded
+  monitoringDate DateTime
+  monitoringUnit String           // 监测单位
+  responsiblePerson String @default("")
+  treatmentMeasure String @default("")
+  remark        String   @default("")
+  status        String   @default("normal") // normal/exceeded/improved
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 14.5 土壤管理 (GB 5085 土壤环境质量/GB 15618 农用地/DZ 场地风险管控)
+model SoilMonitoring {
+  id            String   @id @default(cuid())
+  orgId         String
+  plotName      String            // 地块名称
+  location      String            // 采样点位置
+  depth         String?           // 采样深度 0-0.5/0.5-1.5/1.5-6m
+  sampleType    String   @default("industrial") // industrial/residential/farm 用地类型
+  pollutants    String            // 监测因子: 砷/铅/汞/镉/铬/苯系物等
+  ph            Float?
+  heavyMetals   String?           // 重金属实测值描述
+  vocs          String?           // 挥发性有机物实测值描述
+  standardLimit String?           // 执行标准(GB 36600第一类/第二类标准)
+  exceedance    String   @default("normal")
+  monitoringDate DateTime
+  monitoringUnit String
+  responsiblePerson String @default("")
+  treatmentMeasure String @default("")
+  remark        String   @default("")
+  status        String   @default("normal") // normal/exceeded/remediated
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// 14.6 环保许可管理 (《排污许可分类管理名录》- 重点/简化管理; 环评+排污许可证+备案)
+model EnvPermit {
+  id            String   @id @default(cuid())
+  orgId         String
+  permitType    String            // 类型: env_assessment/discharging_permit/filing/annual_report
+  permitName    String            // 证书/批文名称
+  permitNo      String            // 编号
+  issuingAuthority String         // 发证机关
+  managementCategory String   @default("general") // key/simplified/general 重点/简化/不需要
+  approvalDate  DateTime
+  expiryDate    DateTime          // 有效期截止
+  permitScope   String            // 许可范围/排污种类与限值
+  annualReport  String   @default("not_required") // required/done/not_required 年度执行报告
+  renewalPlan   String   @default("none") // none/planned/submitted 续证计划
+  responsiblePerson String @default("")
+  remark        String   @default("")
+  status        String   @default("valid") // valid/near_expiry/expired/renewed
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

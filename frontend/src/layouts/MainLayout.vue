@@ -12,10 +12,7 @@
             <el-sub-menu v-if="group.children.length > 1" :index="group.title">
               <template #title>
                 <el-icon><component :is="group.icon" /></el-icon>
-                <span class="menu-group-label">
-                  <span class="menu-title-main">{{ group.title }}</span>
-                  <span v-if="group.alias" class="menu-title-alias">/{{ group.alias }}</span>
-                </span>
+                <span class="menu-group-label">{{ group.title }}</span>
               </template>
               <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
                 <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
@@ -47,10 +44,7 @@
               <el-sub-menu v-if="group.children.length > 1" :index="group.title">
                 <template #title>
                   <el-icon><component :is="group.icon" /></el-icon>
-                  <span class="menu-group-label">
-                    <span class="menu-title-main">{{ group.title }}</span>
-                    <span v-if="group.alias" class="menu-title-alias">/{{ group.alias }}</span>
-                  </span>
+                  <span class="menu-group-label">{{ group.title }}</span>
                 </template>
                 <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
                   <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
@@ -114,22 +108,22 @@ const router = useRouter()
 const collapse = ref(false)
 const mobileMenuOpen = ref(false)
 
-// 菜单配置 - 对标《有色金属压力加工企业安全生产标准化评定标准》13要素(评本名), alias为框架版别名
+// 菜单配置 - 对标《有色金属压力加工企业安全生产标准化评定标准》13要素 + 独立环保管理模块
 const menuGroups = [
   { title: '工作台', icon: 'Odometer', children: [
     { path: '/dashboard', title: '仪表盘', icon: 'Odometer' },
   ]},
-  { title: '一、安全生产目标', alias: '目标', icon: 'Aim', children: [
+  { title: '一、目标', icon: 'Aim', children: [
     { path: '/safety-plan', title: '安全规划' }, { path: '/annual-objective', title: '年度目标' }, { path: '/annual-plan', title: '年度计划' },
   ]},
   { title: '二、组织机构和职责', icon: 'OfficeBuilding', children: [
     { path: '/committee', title: '安委会管理' }, { path: '/safety-meeting', title: '安全会议' }, { path: '/responsibility', title: '责任制' }, { path: '/leadership', title: '安全领导力' },
     { path: '/leadership-evaluation', title: '安全履职评价' },
   ]},
-  { title: '三、安全生产投入', icon: 'Money', children: [
+  { title: '三、资金投入', icon: 'Money', children: [
     { path: '/expenditure', title: '安全投入', icon: 'Money' },
   ]},
-  { title: '四、法律法规与安全管理制度', icon: 'Document', children: [
+  { title: '四、法规与制度', icon: 'Document', children: [
     { path: '/regulation', title: '法律法规' }, { path: '/internal-regulation', title: '规章制度' }, { path: '/compliance', title: '合规评估' }, { path: '/safety-philosophy', title: '安全理念' },
   ]},
   { title: '五、教育培训', icon: 'Reading', children: [
@@ -150,12 +144,12 @@ const menuGroups = [
     { path: '/contractor-approval', title: '承包商审批' }, { path: '/contractor-blacklist', title: '承包商黑名单' }, { path: '/deep-cast-monitor', title: '深井灌注监测' },
     { path: '/unsafe-behavior', title: '不安全行为管控' }, { path: '/abnormal-handling', title: '异常处置' }, { path: '/work-behavior', title: '作业行为管理' },
   ]},
-  { title: '八、隐患排查与治理', alias: '隐患排查和治理', icon: 'Search', children: [
+  { title: '八、隐患排查与治理', icon: 'Search', children: [
     { path: '/inspection-plan', title: '排查计划' }, { path: '/hazard', title: '隐患排查' }, { path: '/hazard-reward', title: '隐患奖励' },
     { path: '/violation', title: '违章管理' }, { path: '/safety-score', title: '安全积分' }, { path: '/major-hazard', title: '重大事故隐患' },
     { path: '/safety-inspection', title: '隐患排查检查' }, { path: '/hazard-evaluation', title: '隐患治理评估' },
   ]},
-  { title: '九、危险源监控', alias: '重大危险源监控', icon: 'MapLocation', children: [
+  { title: '九、危险源和环境因素', icon: 'MapLocation', children: [
     { path: '/work-unit', title: '作业单元' }, { path: '/risk-control', title: '危险源识别' }, { path: '/risk-inspection-config', title: '风险排查项' }, { path: '/risk-inspection', title: '风险排查' },
     { path: '/risk-review', title: '危险源评审' }, { path: '/risk-change', title: '危险源变更' }, { path: '/risk-map', title: '危险源地图' },
   ]},
@@ -166,12 +160,16 @@ const menuGroups = [
   { title: '十一、应急救援', icon: 'AlarmClock', children: [
     { path: '/emergency-plan', title: '应急预案' }, { path: '/drill-plan', title: '演练计划' }, { path: '/emergency-team', title: '应急队伍' }, { path: '/emergency-supplies', title: '应急物资' },
   ]},
-  { title: '十二、事故报告调查和处理', alias: '事故', icon: 'CircleClose', children: [
+  { title: '十二、事故报告调查和处理', icon: 'CircleClose', children: [
     { path: '/accident', title: '事故报告' }, { path: '/accident-investigation', title: '事故调查' }, { path: '/accident-communication', title: '事故沟通' }, { path: '/accident-responsibility', title: '责任认定' },
     { path: '/accident-action', title: '整改措施' }, { path: '/accident-archive', title: '事故档案' }, { path: '/near-miss', title: '未遂事故' },
   ]},
   { title: '十三、绩效评定和持续改进', icon: 'TrendCharts', children: [
     { path: '/performance', title: '绩效评定' }, { path: '/improvement', title: '持续改进' }, { path: '/safety-kpi', title: '安全金字塔KPI' }, { path: '/performance-assessment', title: '绩效评价' },
+  ]},
+  { title: '十四、环境管理', icon: 'Tree', children: [
+    { path: '/wastewater-emission', title: '废水管理' }, { path: '/exhaust-emission', title: '废气管理' }, { path: '/solid-waste-record', title: '固废台账' },
+    { path: '/noise-monitoring', title: '噪声监测' }, { path: '/soil-monitoring', title: '土壤监测' }, { path: '/env-permit', title: '环保许可' },
   ]},
   { title: '个人工作台', icon: 'Tickets', children: [
     { path: '/todo', title: '我的待办' }, { path: '/notification', title: '消息通知' },
@@ -205,11 +203,8 @@ function handleCommand(cmd) {
 :deep(.el-menu-item.is-active) { background-color: #17542c !important; }
 :deep(.el-menu-item:hover) { background-color: #2a8048 !important; }
 :deep(.el-sub-menu .el-menu) { background-color: #17542c !important; }
-/* 分组标题双行: 主标题=评本名(13要素), 别名=框架版简称 */
 :deep(.el-sub-menu > .el-menu) { }
-.menu-group-label { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; overflow: hidden; }
-.menu-title-main { font-size: 14px; line-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 148px; }
-.menu-title-alias { font-size: 11px; line-height: 13px; color: #ffffff73; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 148px; }
+.menu-group-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 168px; }
 
 /* 移动端侧边栏抽屉 */
 .mobile-overlay {

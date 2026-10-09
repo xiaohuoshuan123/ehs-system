@@ -86,6 +86,13 @@ const routes = [
       { path: 'major-hazard', component: () => import('../views/hazard/MajorHazard.vue'), meta: { title: '重大事故隐患', group: '隐患治理' } },
       { path: 'safety-inspection', component: () => import('../views/performance/SafetyInspection.vue'), meta: { title: '隐患排查检查', group: '隐患治理' } },
       { path: 'hazard-evaluation', component: () => import('../views/hazard/HazardEvaluation.vue'), meta: { title: '隐患治理评估', group: '隐患治理' } },
+      // ====== 十四、环保管理 ======
+      { path: 'wastewater-emission', component: () => import('../views/environment/WastewaterEmission.vue'), meta: { title: '废水管理', group: '环保管理' } },
+      { path: 'exhaust-emission', component: () => import('../views/environment/ExhaustEmission.vue'), meta: { title: '废气管理', group: '环保管理' } },
+      { path: 'solid-waste-record', component: () => import('../views/environment/SolidWasteRecord.vue'), meta: { title: '固废台账', group: '环保管理' } },
+      { path: 'noise-monitoring', component: () => import('../views/environment/NoiseMonitoring.vue'), meta: { title: '噪声监测', group: '环保管理' } },
+      { path: 'soil-monitoring', component: () => import('../views/environment/SoilMonitoring.vue'), meta: { title: '土壤监测', group: '环保管理' } },
+      { path: 'env-permit', component: () => import('../views/environment/EnvPermit.vue'), meta: { title: '环保许可', group: '环保管理' } },
 
       // 十、职业健康
       { path: 'ppe', component: () => import('../views/health/PPEItem.vue'), meta: { title: 'PPE物品', group: '职业健康' } },

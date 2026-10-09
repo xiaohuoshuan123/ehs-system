@@ -182,6 +182,13 @@ app.use('/api/work-behavior', require('./routes/workBehavior'));
 
 // 隐患治理成效评估
 app.use('/api/hazard-evaluation', require('./routes/hazardEvaluation'));
+// ====== 十四、环保管理 (14.1废水/14.2废气/14.3固废/14.4噪声/14.5土壤/14.6许可) ======
+app.use('/api/wastewater-emission', require('./routes/wastewaterEmission'));
+app.use('/api/exhaust-emission', require('./routes/exhaustEmission'));
+app.use('/api/solid-waste-record', require('./routes/solidWasteRecord'));
+app.use('/api/noise-monitoring', require('./routes/noiseMonitoring'));
+app.use('/api/soil-monitoring', require('./routes/soilMonitoring'));
+app.use('/api/env-permit', require('./routes/envPermit'));
 
 // 个人工作台
 app.use('/api/todo', require('./routes/todo'));
