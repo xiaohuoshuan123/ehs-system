@@ -176,16 +176,15 @@ onMounted(async () => {
     })
   }
 
-  // 安全金字塔 (7层 DuPont 模型) - 等边三角形
-  // Tier1 死亡(红) → Tier2 损失工作日(橙) → Tier3 工作受限(黄) → Tier4 可记录(浅黄)
-  // → Tier5 急救箱(绿) → Tier6 无伤害(粉) → Tier7 安全观察(蓝)
+  // 安全金字塔 (7层 DuPont 模型) - 等边三角形，塔尖在上、越往下越宽
+  // 文字布局：层名在图形左侧，引导线连到层左边缘，图形内只放数字（宽层内可放"名+数字"）
   const p = dashData?.pyramid || null
   if (pyramidChartRef.value && p) {
     const tiers = [
       { name: '死亡', value: p.fatalities || 0, color: '#f56c6c' },
       { name: '损失工作日', value: p.lostWorkdays || 0, color: '#fa8c16' },
       { name: '工作受限', value: p.workRestricted || 0, color: '#fab000' },
-      { name: '可记录(医疗/工伤)', value: p.recordable || 0, color: '#d4dcb5' },
+      { name: '可记录', value: p.recordable || 0, color: '#d4dcb5' },
       { name: '急救箱事故', value: p.firstAid || 0, color: '#67c23a' },
       { name: '无伤害事故', value: p.noInjury || 0, color: '#e91e63' },
       { name: '安全观察', value: p.safetyObs || 0, color: '#409eff' },
@@ -193,76 +192,73 @@ onMounted(async () => {
     
     const chart = echarts.init(pyramidChartRef.value)
     
-    // 等边三角形参数
-    const w = 220, h = 200
-    const layerH = h / 7
+    // 布局（归一化坐标系）：左侧标签区 + 间距 + 三角形底边 w
+    // 等腰三角形（宽大于等边比例，底边更宽利于放数字）：w=170、h=146
+    // 整图 235×170，容器 275×260 → 两侧各留 20px、上下各 45px
+    const w = 170, h = 146, labelW = 60, gap = 5
+    const totalW = labelW + gap + w                       // 235
+    const cx = labelW + gap + w / 2                       // 三角形中心 x = 150
+    const layerH = h / 7                                  // ≈20.9
     const elements = []
     
-    // 从顶到底绘制7层
     for (let i = 0; i < 7; i++) {
       const tier = tiers[i]
       
-      // 下边宽度（靠近底边）
-      const bottomWidth = w * (i + 1) / 7
-      
-      // 上边宽度（靠近顶点，i=0时是三角形）
+      // 宽度随层级递增（i=0 为塔尖顶点）
       const topWidth = w * i / 7
+      const bottomWidth = w * (i + 1) / 7
+      const yc = h * (i + 0.5) / 7                       // 该层垂直中点
+      const yTop = yc - layerH / 2
+      const yBottom = yc + layerH / 2
       
-      // y 坐标（从下往上）
-      const yBottom = h - i * layerH
-      const yTop = h - (i + 1) * layerH
+      // 四个顶点
+      const x4 = cx - topWidth / 2      // 左上
+      const x3 = cx + topWidth / 2      // 右上
+      const x2 = cx + bottomWidth / 2   // 右下
+      const x1 = cx - bottomWidth / 2   // 左下
       
-      // 四个顶点（梯形）
-      const x1 = (w - bottomWidth) / 2  // 左下角
-      const x2 = (w + bottomWidth) / 2  // 右下角
-      const x3 = (w + topWidth) / 2  // 右上角
-      const x4 = (w - topWidth) / 2  // 左上角
-      
-      const points = [
-        [x1, yBottom],
-        [x2, yBottom],
-        [x3, yTop],
-        [x4, yTop]
-      ]
-      
-      // 梯形/三角形填充
+      // 层填充
       elements.push({
         type: 'polygon',
-        shape: { points: points },
+        shape: { points: [[x4, yTop], [x3, yTop], [x2, yBottom], [x1, yBottom]] },
         style: { fill: tier.color, stroke: '#fff', lineWidth: 1 },
         z: 100 + i
       })
       
-      // 标签文字
-      const labelY = (yBottom + yTop) / 2
-      const isLightColor = ['#d4dcb5', '#fab000', '#67c23a'].includes(tier.color)
+      // 引导线：从标签区右边界延伸到该层左斜边中点
+      const xLeftEdge = (x1 + x4) / 2
+      elements.push({
+        type: 'line',
+        shape: { x1: labelW + 1, y1: yc, x2: xLeftEdge, y2: yc },
+        style: { stroke: '#c0c4cc', lineWidth: 1 },
+        z: 99
+      })
+      // 层名：左对齐（最长 5 字 × 11px ≈ 55px < 标签区 60px）
       elements.push({
         type: 'text',
-        style: {
-          text: `${tier.name}: ${tier.value}`,
-          x: w / 2,
-          y: labelY,
-          textAlign: 'center',
-          textVerticalAlign: 'middle',
-          fontSize: 11,
-          fill: isLightColor ? '#333' : '#fff',
-          fontWeight: 'bold'
-        },
+        style: { text: tier.name, x: 3, y: yc, textAlign: 'left',
+                 textVerticalAlign: 'middle', fontSize: 11, fill: '#606266' },
         z: 101 + i
+      })
+      
+      // 图形内：只放数字。字号按该层中点可用宽度自适应（窄层略小，避免溢出）
+      const isLight = ['#d4dcb5', '#fab000', '#67c23a'].includes(tier.color)
+      const val = tier.value >= 10000 ? (tier.value / 10000).toFixed(1) + '万' : String(tier.value)
+      const availW = w * (i + 0.2) / 7                   // 该层中点宽度留边距后的可用宽
+      const fs = availW > 20 ? 12 : availW > 11 ? 10 : 9
+      elements.push({
+        type: 'text',
+        style: { text: val, x: cx, y: yc, textAlign: 'center', textVerticalAlign: 'middle',
+                 fontSize: fs, fill: isLight ? '#303133' : '#fff', fontWeight: 'bold' },
+        z: 102 + i
       })
     }
     
-    // 底部标题
+    // 底部数据来源（居中于整个图形宽度）
     elements.push({
       type: 'text',
-      style: {
-        text: `数据来源: ${p.source === 'manual' ? p.period : '系统推导'}`,
-        x: w / 2,
-        y: h + 15,
-        textAlign: 'center',
-        fontSize: 10,
-        fill: '#909399'
-      }
+      style: { text: `数据来源: ${p.source === 'manual' ? p.period : '系统推导'}`,
+               x: totalW / 2, y: h + 12, textAlign: 'center', fontSize: 10, fill: '#909399' }
     })
     
     chart.setOption({
