@@ -190,10 +190,12 @@ function crud(modelName, opts = {}) {
       exact.forEach(k => {
         if (q[k] == null || q[k] === '') return;
         // 支持数组(multi-select)或逗号分隔字符串(dashboard链接),统一转 Prisma `in` 数组
+        // 注意：Prisma findMany 的 where 不接受裸数组，必须是 { in: [...] } 形式
         const vals = Array.isArray(q[k])
           ? q[k].filter(Boolean)
           : String(q[k]).split(',').map(s => s.trim()).filter(Boolean);
-        where[k] = vals.length === 1 ? vals[0] : vals;
+        if (!vals.length) return;
+        where[k] = vals.length === 1 ? vals[0] : { in: vals };
       });
       // 组织过滤
       if (q.orgId) where.orgId = q.orgId;
