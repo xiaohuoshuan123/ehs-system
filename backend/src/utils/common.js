@@ -9,11 +9,19 @@ const express = require('express');
 const prisma = new PrismaClient();
 
 // ---- 认证中间件 ----
-const auth = (req, res, next) => {
+// 校验 token 后从库中读取当前用户（含 orgId），挂到 req.user，
+// 供各 CRUD 路由做 orgId 自动注入 / 组织级数据隔离。
+const auth = async (req, res, next) => {
   const h = req.headers.authorization;
   if (!h) return res.status(401).json({ code: 401, message: '未登录' });
   try {
-    req.user = jwt.verify(h.split(' ')[1], process.env.JWT_SECRET);
+    const decoded = jwt.verify(h.split(' ')[1], process.env.JWT_SECRET);
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: { org: true, role: true }
+    });
+    if (!user) return res.status(401).json({ code: 401, message: '用户不存在' });
+    req.user = user;
     next();
   } catch {
     res.status(401).json({ code: 401, message: 'Token无效' });
@@ -174,7 +182,19 @@ function crud(modelName, opts = {}) {
     try {
       // 仅注入 createdAt（Prisma @default(now()) 可处理，显式设置以保兼容）；
       // 不注入 createdById —— 多数模型并无此字段
-      const d = onlyKnownFields(m, modelName, sanitizeData({ ...req.body, createdAt: new Date() }));
+      // orgId 自动注入：若模型有 orgId 字段且前端未传/传空，则用当前用户的 orgId，
+      // 避免前端 localStorage 缺失导致 Prisma "Argument orgId is missing"。
+      // 用户未绑定组织（演示账号常见）时，回退到第一个组织，保证 KPI 等表可正常写入。
+      const d0 = sanitizeData({ ...req.body, createdAt: new Date() });
+      const d = onlyKnownFields(m, modelName, d0);
+      if (d.orgId === null || d.orgId === undefined || d.orgId === '') {
+        let uid = req.user && req.user.orgId;
+        if (!uid) {
+          const firstOrg = await prisma.organization.findFirst();
+          uid = firstOrg?.id || null;
+        }
+        if (uid) d.orgId = uid;
+      }
       const result = await m.create({ data: d });
       ok(res, result, '创建成功');
     } catch (e) { fail(res, friendlyError(e)); }
@@ -182,7 +202,7 @@ function crud(modelName, opts = {}) {
 
   r.get('/', auth, async (req, res) => {
     try {
-      const { page = 1, pageSize = 20, ...q } = req.query;
+      const { page = 1, pageSize = 20, orderBy, ...q } = req.query;
       const where = {};
       Object.entries(filters).forEach(([k, type]) => {
         if (q[k]) where[k] = { contains: q[k] };
