@@ -224,11 +224,11 @@ onMounted(async () => {
     const chart = echarts.init(pyramidChartRef.value)
     
     // 布局（归一化坐标系）：左侧标签区 + 间距 + 三角形底边 w
-    // 等腰三角形，塔尖在上；整图 262×174 在容器 275×260 内两侧各留 6.5px、上下各 43px
-    const w = 200, h = 174, labelW = 58, gap = 4
-    const totalW = labelW + gap + w                       // 262
-    const cx = labelW + gap + w / 2                       // 三角形中心 x = 162
-    const layerH = h / 7                                  // ≈24.9
+    // 等腰三角形，塔尖在上；整图 268×195 在容器 275×260 内两侧各留 3.5px、上下各 32.5px
+    const w = 210, h = 195, labelW = 55, gap = 3
+    const totalW = labelW + gap + w                       // 268
+    const cx = labelW + gap + w / 2                       // 三角形中心 x = 165.5
+    const layerH = h / 7                                  // ≈27.9
     const elements = []
     
     for (let i = 0; i < 7; i++) {
