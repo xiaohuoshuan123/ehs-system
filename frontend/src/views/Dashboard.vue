@@ -139,13 +139,31 @@ onMounted(async () => {
   const notis = await notificationApi.list({ pageSize: 5 })
   notifications.value = notis.data || []
 
-  // 隐患分类图表
+  // 隐患分类图表 - 水平条形图（避免饼图右侧标签被遮挡）
   const hazardCats = dashData?.monthlyHazards || []
   if (hazardChartRef.value && hazardCats.length) {
     const chart = echarts.init(hazardChartRef.value)
+    const colors = ['#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399', '#b37feb', '#13c2c2']
     chart.setOption({
-      tooltip: { trigger: 'item' },
-      series: [{ type: 'pie', radius: ['40%','70%'], data: hazardCats.map(h => ({ name: h.category || '其他', value: h._count._all })), itemStyle: { borderRadius: 6 } }]
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 4, right: 30, top: 8, bottom: 4, containLabel: true },
+      xAxis: { type: 'value', show: false },
+      yAxis: {
+        type: 'category',
+        data: hazardCats.map(h => h.category || '其他').reverse(),
+        axisLabel: { fontSize: 12, color: '#606266' },
+        axisLine: { show: false },
+        axisTick: { show: false }
+      },
+      series: [{
+        type: 'bar',
+        data: hazardCats.map((h, idx) => ({
+          value: h._count._all,
+          itemStyle: { color: colors[idx % colors.length], borderRadius: [0, 4, 4, 0] }
+        })).reverse(),
+        barWidth: '55%',
+        label: { show: true, position: 'right', fontSize: 12, fontWeight: 'bold', color: '#303133' }
+      }]
     })
   }
 
@@ -167,17 +185,30 @@ onMounted(async () => {
   if (riskChartRef.value && riskDist.length) {
     const chart = echarts.init(riskChartRef.value)
     chart.setOption({
-      tooltip: { trigger: 'item' },
-      series: [{ type: 'pie', radius: ['40%','70%'], data: riskDist.map(r => ({
-        name: riskName[r.riskLevel] || r.riskLevel,
-        value: r._count._all,
-        itemStyle: { color: riskColor[r.riskLevel] || '#909399' }
-      })) }]
+      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+      grid: { left: 4, right: 30, top: 8, bottom: 4, containLabel: true },
+      xAxis: { type: 'value', show: false },
+      yAxis: {
+        type: 'category',
+        data: riskDist.map(r => riskName[r.riskLevel] || r.riskLevel).reverse(),
+        axisLabel: { fontSize: 12, color: '#606266' },
+        axisLine: { show: false },
+        axisTick: { show: false }
+      },
+      series: [{
+        type: 'bar',
+        data: riskDist.map(r => ({
+          value: r._count._all,
+          itemStyle: { color: riskColor[r.riskLevel] || '#909399', borderRadius: [0, 4, 4, 0] }
+        })).reverse(),
+        barWidth: '55%',
+        label: { show: true, position: 'right', fontSize: 12, fontWeight: 'bold', color: '#303133' }
+      }]
     })
   }
 
-  // 安全金字塔 (7层 DuPont 模型) - 等边三角形，塔尖在上、越往下越宽
-  // 文字布局：层名在图形左侧，引导线连到层左边缘，图形内只放数字（宽层内可放"名+数字"）
+  // 安全金字塔 (7层 DuPont 模型) - 等腰三角形，塔尖在上、越往下越宽
+  // 文字布局：层名在图形左侧（左对齐），引导线连到层左边缘，图形内只放数字
   const p = dashData?.pyramid || null
   if (pyramidChartRef.value && p) {
     const tiers = [
@@ -193,12 +224,11 @@ onMounted(async () => {
     const chart = echarts.init(pyramidChartRef.value)
     
     // 布局（归一化坐标系）：左侧标签区 + 间距 + 三角形底边 w
-    // 等腰三角形（宽大于等边比例，底边更宽利于放数字）：w=170、h=146
-    // 整图 235×170，容器 275×260 → 两侧各留 20px、上下各 45px
-    const w = 170, h = 146, labelW = 60, gap = 5
-    const totalW = labelW + gap + w                       // 235
-    const cx = labelW + gap + w / 2                       // 三角形中心 x = 150
-    const layerH = h / 7                                  // ≈20.9
+    // 等腰三角形，塔尖在上；整图 262×174 在容器 275×260 内两侧各留 6.5px、上下各 43px
+    const w = 200, h = 174, labelW = 58, gap = 4
+    const totalW = labelW + gap + w                       // 262
+    const cx = labelW + gap + w / 2                       // 三角形中心 x = 162
+    const layerH = h / 7                                  // ≈24.9
     const elements = []
     
     for (let i = 0; i < 7; i++) {
@@ -233,7 +263,7 @@ onMounted(async () => {
         style: { stroke: '#c0c4cc', lineWidth: 1 },
         z: 99
       })
-      // 层名：左对齐（最长 5 字 × 11px ≈ 55px < 标签区 60px）
+      // 层名：左对齐（最长 5 字 × 11px ≈ 55px < 标签区 58px）
       elements.push({
         type: 'text',
         style: { text: tier.name, x: 3, y: yc, textAlign: 'left',
@@ -245,7 +275,7 @@ onMounted(async () => {
       const isLight = ['#d4dcb5', '#fab000', '#67c23a'].includes(tier.color)
       const val = tier.value >= 10000 ? (tier.value / 10000).toFixed(1) + '万' : String(tier.value)
       const availW = w * (i + 0.2) / 7                   // 该层中点宽度留边距后的可用宽
-      const fs = availW > 20 ? 12 : availW > 11 ? 10 : 9
+      const fs = availW > 26 ? 13 : availW > 15 ? 11 : 9
       elements.push({
         type: 'text',
         style: { text: val, x: cx, y: yc, textAlign: 'center', textVerticalAlign: 'middle',
@@ -253,13 +283,6 @@ onMounted(async () => {
         z: 102 + i
       })
     }
-    
-    // 底部数据来源（居中于整个图形宽度）
-    elements.push({
-      type: 'text',
-      style: { text: `数据来源: ${p.source === 'manual' ? p.period : '系统推导'}`,
-               x: totalW / 2, y: h + 12, textAlign: 'center', fontSize: 10, fill: '#909399' }
-    })
     
     chart.setOption({
       graphic: {
