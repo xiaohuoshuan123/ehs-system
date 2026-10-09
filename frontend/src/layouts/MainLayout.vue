@@ -1,6 +1,6 @@
 <template>
   <el-container class="layout-container">
-    <!-- 侧边栏 - 桌面端固定，移动端抽屉 -->
+    <!-- 侧边栏 - 桌面端固定,移动端抽屉 -->
     <el-aside :width="collapse ? '64px' : '220px'" class="sidebar hidden-mobile" :class="{ 'sidebar-collapsed': collapse }">
       <div class="logo">
         <span v-if="!collapse">EHS 安全系统</span>
@@ -143,7 +143,7 @@ const menuGroups = [
     { path: '/accident', title: '事故报告' }, { path: '/accident-investigation', title: '事故调查' }
   ]},
   { title: '绩效改进', icon: 'TrendCharts', children: [
-    { path: '/performance', title: '绩效评定' }, { path: '/improvement', title: '持续改进' }
+    { path: '/performance', title: '绩效评定' }, { path: '/improvement', title: '持续改进' }, { path: '/safety-kpi', title: '安全金字塔KPI' }
   ]},
   { title: '个人工作台', icon: 'Tickets', children: [
     { path: '/todo', title: '我的待办' }, { path: '/notification', title: '消息通知' }
@@ -155,7 +155,7 @@ const menuGroups = [
 
 function handleCommand(cmd) {
   if (cmd === 'logout') {
-    ElMessageBox.confirm('确定退出登录吗？', '提示', { type: 'warning' }).then(() => {
+    ElMessageBox.confirm('确定退出登录吗?', '提示', { type: 'warning' }).then(() => {
       userStore.logout()
       router.push('/login')
     })
