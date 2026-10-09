@@ -3,7 +3,7 @@
     <!-- 统计卡片 -->
     <el-row :g="4" :gutter="16" class="stat-cards">
       <el-col :span="6" v-for="card in statCards" :key="card.title">
-        <el-card shadow="hover" class="stat-card" :style="{ borderTop: `3px solid ${card.color}` }">
+        <el-card shadow="hover" class="stat-card clickable" :style="{ borderTop: `3px solid ${card.color}` }" @click="card.link && router.push(card.link)">
           <div class="stat-card-inner">
             <div class="stat-info">
               <p class="stat-title">{{ card.title }}</p>
@@ -43,7 +43,7 @@
         <el-card>
           <template #header><span>最近隐患</span></template>
           <el-empty v-if="!recentHazards.length" description="暂无隐患" :image-size="60" />
-          <div v-for="h in recentHazards.slice(0,5)" :key="h.id" class="hazard-item">
+          <div v-for="h in recentHazards.slice(0,5)" :key="h.id" class="hazard-item clickable-row" @click="router.push('/hazard')">
             <el-tag :type="h.riskLevel === 'major' ? 'danger' : 'warning'" size="small">{{ h.riskLevel === 'major' ? '重大' : '一般' }}</el-tag>
             <span>{{ h.title }}</span>
           </div>
@@ -65,9 +65,12 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { crudApi } from '../api'
 import api from '../api'
 import * as echarts from 'echarts'
+
+const router = useRouter()
 
 const hazardChartRef = ref()
 const riskChartRef = ref()
@@ -90,14 +93,14 @@ onMounted(async () => {
     dashData = await api.get('/dashboard')
     const s = dashData?.summary || {}
     statCards.value = [
-      { title: '隐患总数', value: s.hazardTotal || 0, sub: `待整改: ${s.hazardOpen || 0}`, icon: 'Warning', color: '#e6a23c' },
-      { title: '逾期未整改', value: s.hazardOverdue || 0, sub: '需要立即处理', icon: 'CircleClose', color: '#f56c6c' },
-      { title: '即将到期证书', value: s.certExpiring || 0, sub: '30天内', icon: 'Document', color: '#409eff' },
-      { title: '违章总数', value: s.violationCount || 0, sub: '年度累计', icon: 'CircleCloseFilled', color: '#909399' },
-      { title: '事故总数', value: s.accidentCount || 0, sub: '年度累计', icon: 'Bell', color: '#f56c6c' },
-      { title: '待办事项', value: s.todoPending || 0, sub: '待处理', icon: 'Tickets', color: '#409eff' },
-      { title: '隐患奖励', value: s.hazardRewards || 0, sub: '已审批', icon: 'Trophy', color: '#67c23a' },
-      { title: '进行中作业', value: s.activePermits || 0, sub: '作业许可', icon: 'Tools', color: '#e6a23c' },
+      { title: '隐患总数', value: s.hazardTotal || 0, sub: `待整改: ${s.hazardOpen || 0}`, icon: 'Warning', color: '#e6a23c', link: '/hazard' },
+      { title: '逾期未整改', value: s.hazardOverdue || 0, sub: '需要立即处理', icon: 'CircleClose', color: '#f56c6c', link: { path: '/hazard', query: { fixStatus: 'overdue' } } },
+      { title: '即将到期证书', value: s.certExpiring || 0, sub: '30天内', icon: 'Document', color: '#409eff', link: { path: '/certificate', query: { alertLevel: '30d,overdue' } } },
+      { title: '违章总数', value: s.violationCount || 0, sub: '年度累计', icon: 'CircleCloseFilled', color: '#909399', link: '/violation' },
+      { title: '事故总数', value: s.accidentCount || 0, sub: '年度累计', icon: 'Bell', color: '#f56c6c', link: '/accident' },
+      { title: '待办事项', value: s.todoPending || 0, sub: '待处理', icon: 'Tickets', color: '#409eff', link: { path: '/todo', query: { status: 'pending' } } },
+      { title: '隐患奖励', value: s.hazardRewards || 0, sub: '已审批', icon: 'Trophy', color: '#67c23a', link: { path: '/hazard-reward', query: { status: 'approved' } } },
+      { title: '进行中作业', value: s.activePermits || 0, sub: '作业许可', icon: 'Tools', color: '#e6a23c', link: { path: '/work-permit', query: { status: 'submitted,in_progress' } } },
     ]
   } catch(e) { console.error('dashboard error', e) }
 
@@ -151,4 +154,8 @@ onMounted(async () => {
 .todo-item, .hazard-item, .noti-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 13px; }
 .todo-title, .hazard-item span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .todo-date { color: #c0c4cc; font-size: 12px; }
+.clickable { cursor: pointer; transition: transform 0.15s; }
+.clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background: #f5f7fa; }
 </style>
