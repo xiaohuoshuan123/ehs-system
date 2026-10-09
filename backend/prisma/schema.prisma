@@ -1743,7 +1743,6 @@ model SolidWasteRecord {
   storageDays   Int?              // 贮存天数
   transportUnit String            // 承运单位
   carrierLicense String?          // 承运资质编号
-  transferManifest String?        // 转移联单编号
   disposalMethod String           // 处置方式: incinerate/solidify/utilize
   disposalUnit  String            // 处置单位
   disposalUnitLicense String?     // 处置单位危废经营许可编号

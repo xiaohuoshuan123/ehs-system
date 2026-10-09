@@ -130,7 +130,7 @@ PPE物品 `/api/ppe` ｜ PPE发放 `/api/ppe-issue` ｜ 剂量计 `/api/dosimete
 └──────────────────────────┬───────────────────────────────┘
                            │ Prisma ORM
 ┌──────────────────────────▼───────────────────────────────┐
-│  数据库  PostgreSQL（schema.prisma 109 模型 / 1824 行）   │
+│  数据库  PostgreSQL（schema.prisma 109 模型 / 1823 行）   │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -219,7 +219,7 @@ docker compose up -d --build
 
 ## 数据库模型（109 个）
 
-`backend/prisma/schema.prisma`，1824 行
+`backend/prisma/schema.prisma`，1823 行
 
 | 业务域 | 模型 |
 |---|---|
@@ -316,7 +316,7 @@ EHS智能系统/
 | 前端视图页面 | 95 |
 | 前端路由条目 | 96 |
 | Prisma 数据模型 | 109 |
-| Prisma schema | 1824 行 |
+| Prisma schema | 1823 行 |
 | 后端路由文件 | 107 |
 | `/api` 端点注册 | 107 |
 | CrudPage 复用 | 1 个组件覆盖 93 个模块 |
