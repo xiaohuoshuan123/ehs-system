@@ -74,6 +74,39 @@ router.get('/', auth, async (req, res) => {
     // 标记是否为经典基准（serious=0 时使用）
     heinrich.isClassic = heinrich.serious === 0
 
+    // ============================================================
+    // 安全金字塔 (Safety Pyramid / DuPont 模型)
+    // 7 层：死亡 → 损失工作日 → 工作受限 → 可记录 → 急救箱 → 无伤害 → 安全观察
+    // 优先取用户手工录入的最新 SafetyKpi；没有则从事故数据推导
+    // ============================================================
+    const latestKpi = await prisma.safetyKpi.findFirst({
+      orderBy: [{ year: 'desc' }, { month: 'desc' }, { updatedAt: 'desc' }]
+    });
+    // 以事故数据推导：死亡/损失工作日/工作受限 → 可记录；轻伤/未遂 → 无伤害层近似
+    const fatality = (levels['死亡事故'] || 0);
+    const lostWorkdays = (levels['重伤事故'] || 0);
+    const workRestricted = 0;
+    const recordable = (levels['损失工作日事故'] || 0) + (levels['工伤事故'] || 0) + (levels['可记录事故'] || 0);
+    const firstAid = (levels['轻伤'] || 0) + (levels['急救箱事故'] || 0);
+    const noInjury = (levels['未遂事故'] || 0) + (levels['无伤害事故'] || 0);
+    const safetyObsCount = await prisma.safetyObservation.count();
+    const stopCount = await prisma.safetyObservation.count({ where: { obsType: 'HP' } });
+    const pyramid = latestKpi ? {
+      source: 'manual', // 手工录入
+      period: `${latestKpi.year}年${latestKpi.month ? latestKpi.month + '月' : '年度'}`,
+      fatalities: latestKpi.fatalities, lostWorkdays: latestKpi.lostWorkdays,
+      workRestricted: latestKpi.workRestricted, recordable: latestKpi.recordable,
+      firstAid: latestKpi.firstAid, noInjury: latestKpi.noInjury,
+      safetyObs: latestKpi.safetyObs, stopCount: latestKpi.stopCount
+    } : {
+      source: 'auto', // 由系统数据推导
+      period: '当前',
+      fatalities: fatality, lostWorkdays, workRestricted,
+      recordable, firstAid,
+      noInjury: noInjury || (await prisma.accidentReport.count()) - fatality - lostWorkdays - recordable - firstAid,
+      safetyObs: safetyObsCount, stopCount
+    };
+
     ok(res, {
       summary: {
         hazardTotal, hazardOpen, hazardOverdue,
@@ -81,6 +114,7 @@ router.get('/', auth, async (req, res) => {
         accidentCount, todoPending, hazardRewards, activePermits
       },
       heinrich,
+      pyramid,
       monthlyHazards,
       riskDistribution,
       trainingStats
