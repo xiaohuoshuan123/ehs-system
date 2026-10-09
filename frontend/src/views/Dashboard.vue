@@ -1,8 +1,8 @@
 <template>
   <div class="page-container">
     <!-- 统计卡片 -->
-    <el-row :g="4" :gutter="16" class="stat-cards">
-      <el-col :span="6" v-for="card in statCards" :key="card.title">
+    <el-row :gutter="12" class="stat-cards">
+      <el-col :xs="12" :sm="6" v-for="card in statCards" :key="card.title">
         <el-card shadow="hover" class="stat-card clickable" :style="{ borderTop: `3px solid ${card.color}` }" @click="card.link && router.push(card.link)">
           <div class="stat-card-inner">
             <div class="stat-info">
@@ -17,24 +17,24 @@
     </el-row>
 
     <!-- 图表区域 -->
-    <el-row :gutter="16" style="margin-top:16px">
-      <el-col :span="8">
-        <el-card><template #header><span>隐患分类统计</span></template><div ref="hazardChartRef" style="height:300px"></div></el-card>
+    <el-row :gutter="12" style="margin-top:12px">
+      <el-col :xs="24" :sm="8">
+        <el-card><template #header><span>隐患分类统计</span></template><div ref="hazardChartRef" style="height:260px"></div></el-card>
       </el-col>
-      <el-col :span="8">
-        <el-card><template #header><span>风险等级分布</span></template><div ref="riskChartRef" style="height:300px"></div></el-card>
+      <el-col :xs="24" :sm="8">
+        <el-card><template #header><span>风险等级分布</span></template><div ref="riskChartRef" style="height:260px"></div></el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="8">
         <el-card>
           <template #header><span>海因里希三角 · 1:29:300</span></template>
-          <div ref="heinrichChartRef" style="height:300px"></div>
+          <div ref="heinrichChartRef" style="height:260px"></div>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 近期动态 -->
-    <el-row :gutter="16" style="margin-top:16px">
-      <el-col :span="8">
+    <el-row :gutter="12" style="margin-top:12px">
+      <el-col :xs="24" :sm="8">
         <el-card>
           <template #header><span>待办事项 ({{ todoCount }})</span></template>
           <el-empty v-if="!recentTodos.length" description="暂无待办" :image-size="60" />
@@ -45,7 +45,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="8">
         <el-card>
           <template #header><span>最近隐患</span></template>
           <el-empty v-if="!recentHazards.length" description="暂无隐患" :image-size="60" />
@@ -55,7 +55,7 @@
           </div>
         </el-card>
       </el-col>
-      <el-col :span="8">
+      <el-col :xs="24" :sm="8">
         <el-card>
           <template #header><span>系统公告</span></template>
           <el-empty v-if="!notifications.length" description="暂无通知" :image-size="60" />
@@ -189,7 +189,7 @@ onMounted(async () => {
 
 <style scoped>
 .stat-cards { margin-bottom: 0; }
-.stat-card { margin-bottom: 16px; }
+.stat-card { margin-bottom: 12px; }
 .stat-card-inner { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
 .stat-title { font-size: 13px; color: #909399; margin-bottom: 8px; }
 .stat-value { font-size: 28px; font-weight: bold; margin-bottom: 4px; }
@@ -202,4 +202,10 @@ onMounted(async () => {
 .clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }
 .clickable-row { cursor: pointer; }
 .clickable-row:hover { background: #f5f7fa; }
+
+@media (max-width: 767px) {
+  .stat-value { font-size: 22px; }
+  .stat-icon { font-size: 28px; }
+  .stat-card-inner { padding: 4px 0; }
+}
 </style>
