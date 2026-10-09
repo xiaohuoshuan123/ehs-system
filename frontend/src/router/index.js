@@ -87,6 +87,7 @@ const routes = [
       // 绩效改进
       { path: 'performance', component: () => import('../views/performance/Performance.vue'), meta: { title: '绩效评定', group: '绩效改进' } },
       { path: 'improvement', component: () => import('../views/performance/Improvement.vue'), meta: { title: '持续改进', group: '绩效改进' } },
+      { path: 'safety-kpi', component: () => import('../views/performance/SafetyKpi.vue'), meta: { title: '安全金字塔KPI', group: '绩效改进' } },
       // 系统管理
       { path: 'org', component: () => import('../views/system/Organization.vue'), meta: { title: '组织机构', group: '系统管理' } },
       { path: 'user', component: () => import('../views/system/User.vue'), meta: { title: '用户管理', group: '系统管理' } },
