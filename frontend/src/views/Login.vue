@@ -51,11 +51,17 @@ async function handleLogin() {
 </script>
 
 <style scoped>
-.login-page { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e6d3a 0%, #17542c 50%, #0f3d1f 100%); }
-.login-box { width: 400px; background: #fff; border-radius: 12px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.login-page { height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e6d3a 0%, #17542c 50%, #0f3d1f 100%); padding: 20px; }
+.login-box { width: 400px; max-width: 100%; background: #fff; border-radius: 12px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
 .login-header { text-align: center; margin-bottom: 32px; }
 .login-header h1 { font-size: 22px; color: #1e6d3a; margin-bottom: 8px; }
 .login-header p { font-size: 13px; color: #909399; }
 .login-tips { margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee; text-align: center; }
 .login-tips p { font-size: 12px; color: #909399; margin: 4px 0; }
+
+@media (max-width: 767px) {
+  .login-box { width: 100%; padding: 24px 20px; border-radius: 8px; }
+  .login-header h1 { font-size: 18px; }
+  .login-header p { font-size: 11px; }
+}
 </style>
