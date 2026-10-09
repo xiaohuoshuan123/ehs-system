@@ -120,7 +120,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import api from '../api'
+import api from '../../api'
 
 const isMobile = computed(() => window.innerWidth < 768)
 const submitting = ref(false)
