@@ -26,8 +26,8 @@
       </el-col>
       <el-col :xs="24" :sm="8">
         <el-card>
-          <template #header><span>海因里希三角 · 1:29:300</span></template>
-          <div ref="heinrichChartRef" style="height:260px"></div>
+          <template #header><span>安全金字塔</span></template>
+          <div ref="pyramidChartRef" style="height:260px"></div>
         </el-card>
       </el-col>
     </el-row>
@@ -80,7 +80,7 @@ const router = useRouter()
 
 const hazardChartRef = ref()
 const riskChartRef = ref()
-const heinrichChartRef = ref()
+const pyramidChartRef = ref()
 const statCards = ref([])
 const todoCount = ref(0)
 const recentTodos = ref([])
@@ -148,41 +148,51 @@ onMounted(async () => {
     })
   }
 
-  // 海因里希三角 (Heinrich's Triangle) - 1:29:300
-  // 经典安全法则：每 1 起重伤事故，通常伴随 29 起轻伤和 300 起无伤害事件
-  // 实际比例与经典值对比，用横向条形图直观展示
-  const hz = dashData?.heinrich || { serious: 0, minor: 0, unrecorded: 0, ratio: { minor: 0, unrecorded: 0 } }
-  const rMinor = hz.ratio?.minor || 0
-  const rUncord = hz.ratio?.unrecorded || 0
-  if (heinrichChartRef.value) {
-    const chart = echarts.init(heinrichChartRef.value)
+  // 安全金字塔 (7层 DuPont 模型) - 漏斗图，上窄下宽
+  // Tier1 死亡(红) → Tier2 损失工作日(橙) → Tier3 工作受限(黄) → Tier4 可记录(浅黄)
+  // → Tier5 急救箱(绿) → Tier6 无伤害(粉) → Tier7 安全观察(蓝)
+  const p = dashData?.pyramid || null
+  if (pyramidChartRef.value && p) {
+    const tiers = [
+      { name: '死亡', value: p.fatalities || 0, color: '#f56c6c' },
+      { name: '损失工作日', value: p.lostWorkdays || 0, color: '#fa8c16' },
+      { name: '工作受限', value: p.workRestricted || 0, color: '#fab000' },
+      { name: '可记录(医疗/工伤)', value: p.recordable || 0, color: '#d4dcb5' },
+      { name: '急救箱事故', value: p.firstAid || 0, color: '#67c23a' },
+      { name: '无伤害事故', value: p.noInjury || 0, color: '#e91e63' },
+      { name: '安全观察', value: p.safetyObs || 0, color: '#409eff' },
+    ]
+    const maxVal = Math.max(...tiers.map(t => t.value || 1), 1)
+    const chart = echarts.init(pyramidChartRef.value)
     chart.setOption({
-      tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-      legend: { bottom: 0, data: ['实际比例', '经典比例 1:29:300'] },
-      grid: { left: '3%', right: '8%', bottom: '12%', top: '8%', containLabel: true },
-      xAxis: { type: 'value', name: '比例(以重伤为1)', axisLabel: { formatter: '{value}' } },
-      yAxis: {
-        type: 'category',
-        data: ['无伤害事件', '轻伤', '重伤及以上'],
-        inverse: false
-      },
-      series: [
-        {
-          name: '实际比例',
-          type: 'bar',
-          data: [rUncord, rMinor, 1],
-          itemStyle: { color: (p) => ['#f56c6c', '#e6a23c', '#409eff'][p.dataIndex] },
-          label: { show: true, position: 'right', formatter: '{c}' }
+      tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+      legend: { bottom: 0, type: 'scroll' },
+      series: [{
+        type: 'pie',
+        radius: ['5%', '85%'],
+        center: ['50%', '50%'],
+        roseType: 'area',
+        itemStyle: { borderRadius: 6 },
+        data: tiers.reverse(), // 从底到顶排列(大→小)
+        label: {
+          show: true,
+          formatter: (p) => {
+            const pct = p.data?.value ? Math.round(p.data.value / maxVal * 100) : 0
+            return `{name|${p.data?.name}}\n{val|${p.data?.value ?? 0}}`
+          },
+          rich: {
+            name: { fontSize: 12, color: '#606266', fontWeight: 'bold' },
+            val: { fontSize: 16, color: '#303133', fontWeight: 'bold' }
+          }
         },
-        {
-          name: '经典比例 1:29:300',
-          type: 'bar',
-          data: [300, 29, 1],
-          itemStyle: { color: 'rgba(0,0,0,0.1)', borderColor: '#909399', borderType: 'dashed' },
-          label: { show: false }
-        }
-      ]
+        labelLine: { length: 15, lineStyle: { width: 1 } }
+      }]
     })
+    // 叠加标题文字
+    const titleEl = document.createElement('div')
+    titleEl.style.cssText = 'text-align:center;color:#909399;font-size:12px;margin-top:4px'
+    titleEl.textContent = `数据来源: ${p.source === 'manual' ? p.period : '系统推导'}`
+    chart.getDom().appendChild(titleEl)
   }
 })
 </script>
