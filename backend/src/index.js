@@ -164,8 +164,13 @@ app.use((err, req, res, next) => {
 // ============================================================
 async function ensureDatabaseReady() {
   const { execSync } = require('child_process');
-  const schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
-  const seedPath = path.resolve(__dirname, '../prisma/seed.js');
+  // Docker: __dirname=/app/src, prisma 在 ./prisma/
+  // 本地: __dirname=backend/src, prisma 在 ../prisma/
+  let schemaPath = path.resolve(__dirname, 'prisma/schema.prisma');
+  if (!fs.existsSync(schemaPath)) {
+    schemaPath = path.resolve(__dirname, '../prisma/schema.prisma');
+  }
+  const seedPath = schemaPath.replace('schema.prisma', 'seed.js');
 
   console.log('🔧 [DB] 开始数据库迁移...');
   console.log(`   schema: ${schemaPath}`);
