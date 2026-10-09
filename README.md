@@ -420,3 +420,5 @@ server {
 | Prisma schema | 1352行 |
 | 构建产物(JS模块) | 78 |
 | CrudPage组件 | 1 (配置驱动, 复用74个视图) |
+
+<!-- Deploy trigger: 2026-10-09 16:25:02 -->
