@@ -142,6 +142,9 @@ app.use('/api/accident-archive', require('./routes/accidentArchive'));
 app.use('/api/performance', require('./routes/performance'));
 app.use('/api/improvement', require('./routes/improvement'));
 
+// 安全金字塔 KPI
+app.use('/api/safety-kpi', require('./routes/safetyKpi'));
+
 // 个人工作台
 app.use('/api/todo', require('./routes/todo'));
 app.use('/api/notification', require('./routes/notification'));
