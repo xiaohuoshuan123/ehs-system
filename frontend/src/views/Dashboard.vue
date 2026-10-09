@@ -36,9 +36,14 @@
     <el-row :gutter="12" style="margin-top:12px">
       <el-col :xs="24" :sm="8">
         <el-card>
-          <template #header><span>待办事项 ({{ todoCount }})</span></template>
+          <template #header>
+            <div class="card-header">
+              <span>待办事项 ({{ todoCount }})</span>
+              <el-link type="primary" :underline="false" @click="router.push({ path: '/todo', query: { status: 'pending' } })">查看全部 <el-icon><ArrowRight /></el-icon></el-link>
+            </div>
+          </template>
           <el-empty v-if="!recentTodos.length" description="暂无待办" :image-size="60" />
-          <div v-for="todo in recentTodos.slice(0,5)" :key="todo.id" class="todo-item">
+          <div v-for="todo in recentTodos.slice(0,5)" :key="todo.id" class="todo-item clickable-row" @click="router.push({ path: '/todo', query: { status: 'pending' } })">
             <el-tag :type="todo.priority > 2 ? 'danger' : 'warning'" size="small">{{ todo.priority > 2 ? '紧急' : '普通' }}</el-tag>
             <span class="todo-title">{{ todo.title }}</span>
             <span class="todo-date">{{ formatDate(todo.dueDate) }}</span>
@@ -47,7 +52,12 @@
       </el-col>
       <el-col :xs="24" :sm="8">
         <el-card>
-          <template #header><span>最近隐患</span></template>
+          <template #header>
+            <div class="card-header">
+              <span>最近隐患</span>
+              <el-link type="primary" :underline="false" @click="router.push('/hazard')">查看全部 <el-icon><ArrowRight /></el-icon></el-link>
+            </div>
+          </template>
           <el-empty v-if="!recentHazards.length" description="暂无隐患" :image-size="60" />
           <div v-for="h in recentHazards.slice(0,5)" :key="h.id" class="hazard-item clickable-row" @click="router.push('/hazard')">
             <el-tag :type="h.riskLevel === 'major' ? 'danger' : 'warning'" size="small">{{ h.riskLevel === 'major' ? '重大' : '一般' }}</el-tag>
@@ -57,9 +67,14 @@
       </el-col>
       <el-col :xs="24" :sm="8">
         <el-card>
-          <template #header><span>系统公告</span></template>
+          <template #header>
+            <div class="card-header">
+              <span>系统公告</span>
+              <el-link type="primary" :underline="false" @click="router.push('/notification')">查看全部 <el-icon><ArrowRight /></el-icon></el-link>
+            </div>
+          </template>
           <el-empty v-if="!notifications.length" description="暂无通知" :image-size="60" />
-          <div v-for="n in notifications.slice(0,5)" :key="n.id" class="noti-item">
+          <div v-for="n in notifications.slice(0,5)" :key="n.id" class="noti-item clickable-row" @click="router.push('/notification')">
             <el-tag :type="n.level === 'danger' ? 'danger' : n.level === 'warning' ? 'warning' : 'info'" size="small">{{ n.type }}</el-tag>
             <span>{{ n.title }}</span>
           </div>
@@ -134,16 +149,29 @@ onMounted(async () => {
     })
   }
 
-  // 风险等级图表
+  // 风险等级图表 - AQ/T 9007-2019 风险四色图标准色
+  // 重大(红) → 较大(橙) → 一般(黄) → 低(蓝)
+  const riskColor = {
+    major_above: '#f56c6c',  // 红色 - 重大风险
+    major: '#e6a23c',         // 橙色 - 较大风险
+    general: '#f2c400',       // 黄色 - 一般风险
+    low: '#409eff'            // 蓝色 - 低风险
+  }
+  const riskName = {
+    major_above: '重大风险',
+    major: '较大风险',
+    general: '一般风险',
+    low: '低风险'
+  }
   const riskDist = dashData?.riskDistribution || []
   if (riskChartRef.value && riskDist.length) {
     const chart = echarts.init(riskChartRef.value)
     chart.setOption({
       tooltip: { trigger: 'item' },
       series: [{ type: 'pie', radius: ['40%','70%'], data: riskDist.map(r => ({
-        name: { low: '低风险', general: '一般风险', major: '较大风险', major_above: '重大风险' }[r.riskLevel] || r.riskLevel,
+        name: riskName[r.riskLevel] || r.riskLevel,
         value: r._count._all,
-        itemStyle: { color: { low: '#67c23a', general: '#e6a23c', major: '#f56c6c', major_above: '#f56c6c' }[r.riskLevel] || '#409eff' }
+        itemStyle: { color: riskColor[r.riskLevel] || '#909399' }
       })) }]
     })
   }
@@ -212,6 +240,7 @@ onMounted(async () => {
 .clickable:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; }
 .clickable-row { cursor: pointer; }
 .clickable-row:hover { background: #f5f7fa; }
+.card-header { display: flex; justify-content: space-between; align-items: center; }
 
 @media (max-width: 767px) {
   .stat-value { font-size: 22px; }
