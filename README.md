@@ -1,282 +1,271 @@
-# 永杰集团智慧安全管理系统 (EHS)
+# 永杰集团智能安全管理系统 (EHS)
 
-永杰新材昆山工厂安全生产管理系统，覆盖目标管理、教育培训、设备设施、作业安全、危险源、隐患治理、职业健康、应急管理、事故管理、绩效评定等15个一级模块。
+永杰新材昆山工厂 EHS 智慧安全管理系统，对标《有色金属压力加工企业安全生产标准化评定标准》**13 项考评类目、46 项考评项目、239 条考评内容**，并独立增设**十四、环境管理**模块（废水 / 废气 / 固废 / 噪声 / 土壤 / 排污许可）。
+
+- 在线访问：<https://ehs-frontend.onrender.com>
+- 演示账号：`admin` / `admin123`
+
+---
+
+## 功能模块（14 大类，93 项子模块）
+
+### 一、目标（3）
+安全规划 `/api/plan` ｜ 年度目标 `/api/objective` ｜ 年度计划 `/api/annual-plan`
+
+### 二、组织机构和职责（5）
+安委会管理 `/api/committee` ｜ 安全会议 `/api/safety-meeting` ｜ 责任制 `/api/responsibility`
+｜ 安全领导力 `/api/leadership` ｜ 安全履职评价 `/api/leadership-evaluation`
+
+### 三、资金投入（1）
+安全投入 `/api/expenditure`
+
+### 四、法规与制度（4）
+法律法规 `/api/regulation` ｜ 规章制度 `/api/internal-regulation` ｜ 合规评估 `/api/compliance`
+｜ 安全理念 `/api/safety-philosophy`
+
+### 五、教育培训（10）
+安全证书 `/api/certificate` ｜ 安全课程 `/api/course` ｜ 题库管理 `/api/exam-question`
+｜ 考试管理 `/api/exam` ｜ 考试记录 `/api/exam-record` ｜ 培训记录 `/api/training`
+｜ 课程进度 `/api/user-course` ｜ 师带徒 `/api/mentor` ｜ 人员准入 `/api/personnel-entry`
+｜ 信息沟通 `/api/safety-communication`
+
+### 六、生产设备设施（10）
+设备管理 `/api/equipment` ｜ 设备检修 `/api/equipment-maintenance` ｜ 设备点检 `/api/equipment-inspection`
+｜ 化学品 `/api/chemical` ｜ 特种设备 `/api/special-eq` ｜ 消防区域 `/api/fire-zone`
+｜ 消防器材 `/api/fire-equipment` ｜ 防火巡查计划 `/api/fire-patrol-plan` ｜ 防火巡查 `/api/fire-patrol`
+｜ 科技保障 `/api/technology-protection`
+
+### 七、作业安全（12）
+风险因素 `/api/risk-factor` ｜ 安全观察 `/api/observation` ｜ 安全检查 `/api/work-check`
+｜ 作业许可 `/api/permit` ｜ 变更管理 `/api/change` ｜ 承包商 `/api/contractor`
+｜ 承包商审批 `/api/contractor-approval` ｜ 承包商黑名单 `/api/contractor-blacklist`
+｜ 深井灌注监测 `/api/deep-cast-monitor` ｜ 不安全行为管控 `/api/unsafe-behavior`
+｜ 异常处置 `/api/abnormal-handling` ｜ 作业行为管理 `/api/work-behavior`
+
+### 八、隐患排查与治理（8）
+排查计划 `/api/inspection-plan` ｜ 隐患排查 `/api/hazard` ｜ 隐患奖励 `/api/hazard-reward`
+｜ 违章管理 `/api/violation` ｜ 安全积分 `/api/safety-score` ｜ 重大事故隐患 `/api/major-hazard`
+｜ 隐患排查检查 `/api/safety-inspection` ｜ 隐患治理评估 `/api/hazard-evaluation`
+
+### 九、危险源和环境因素（7）
+作业单元 `/api/work-unit` ｜ 危险源识别 `/api/risk-control` ｜ 风险排查项 `/api/risk-inspection-config`
+｜ 风险排查 `/api/risk-inspection` ｜ 危险源评审 `/api/risk-review` ｜ 危险源变更 `/api/risk-change`
+｜ 危险源地图 `/api/risk-map`
+
+### 十、职业健康（6）
+PPE物品 `/api/ppe` ｜ PPE发放 `/api/ppe-issue` ｜ 剂量计 `/api/dosimeter`
+｜ 警示标识 `/api/warning-sign` ｜ 防护设施 `/api/protective-facility`
+｜ 职业健康档案 `/api/occupational`（含职业健康体检结果 `/api/occupational-exam-result`）
+
+### 十一、应急救援（4）
+应急预案 `/api/emergency` ｜ 应急队伍 `/api/emergency-team` ｜ 应急物资 `/api/emergency-supplies`
+｜ 应急演练计划 `/api/drill-plan`
+
+### 十二、事故报告调查和处理（7）
+事故报告 `/api/accident` ｜ 事故调查 `/api/accident-investigation` ｜ 事故沟通 `/api/accident-communication`
+｜ 责任认定 `/api/accident-responsibility` ｜ 整改措施 `/api/accident-action`
+｜ 事故档案 `/api/accident-archive` ｜ 未遂事故 `/api/near-miss`
+
+### 十三、绩效评定和持续改进（4）
+绩效评定 `/api/performance` ｜ 持续改进 `/api/improvement` ｜ 安全金字塔KPI `/api/safety-kpi`
+｜ 绩效评价 `/api/performance-assessment`
+
+### 十四、环境管理（6）
+废水管理 `/api/wastewater-emission` ｜ 废气管理 `/api/exhaust-emission` ｜ 固废台账 `/api/solid-waste-record`
+｜ 噪声监测 `/api/noise-monitoring` ｜ 土壤监测 `/api/soil-monitoring` ｜ 环保许可 `/api/env-permit`
+
+### 系统管理（4）
+组织机构 `/api/org` ｜ 用户管理 `/api/user` ｜ 角色管理 `/api/role` ｜ 系统参数 `/api/param`
+
+### 个人工作台（2）
+我的待办 `/api/todo` ｜ 消息通知 `/api/notification`
+
+> 上表为前端菜单入口。后端另有 10 个明细端点不单独挂菜单（由对应主模块页承载）：
+> `/api/drill-record`（演练记录）、`/api/drill-assessment`（演练评估）、`/api/objective-agreement`（目标责任状）
+> `/api/plan`（安全规划表）、`/api/plan-feedback`（计划反馈）、`/api/certificate-standard`（证书标准）
+> `/api/expenditure-record`（投入记录）、`/api/hazard-facility`（危险设施）、`/api/special-eq-inspection`（特检）
+> `/api/violation-clause`（违章条款）、`/api/safety-org`（安全管理机构）
+
+---
+
+## 合规依据
+
+| 领域 | 标准 / 法规 |
+|---|---|
+| 安全生产标准化主标尺 | 《有色金属压力加工企业安全生产标准化评定标准》13 要素（46 项考评项目 / 239 条考评内容） |
+| 企业安全生产标准化通用规范 | GB/T 33000-2025 |
+| 工业互联网安全生产 | GB/T 46884.1-2025 |
+| 标准化达标门槛 | 一级 ≥ 90 分；各要素 ≥ 80%（企业内部管控线，非评本原文条款） |
+| 四项安全绩效 | 死亡率、重伤率、直接经济损失、新增职业病发病率 |
+| 废水处理 | GB 21900 铝工业水污染物排放标准（重金属特征限值 / 在线监测） |
+| 废气处理 | GB 21901 铝冶炼 / GB 16297 大气综合（含氟气体、颗粒物、VOCs） |
+| 固废 / 危废 | GB 5085 危险废物鉴别 + 转移联单 + 承运 / 处置单位资质 |
+| 噪声 | GB 12348 工业企业厂界环境噪声排放标准（1/2/3/4a 类功能区） |
+| 土壤 | GB 36600 土壤环境质量标准（用地分类 + 重金属 / VOCs 因子） |
+| 排污许可 | 《排污许可分类管理名录》重点 / 简化 / 登记三级管理 |
 
 ---
 
 ## 技术栈
 
-| 层 | 技术 | 版本 |
-|---|---|---|
-| 前端 | Vue 3 + Vite + Element Plus + Pinia + ECharts | Vue 3.5 / Vite 8 / Element Plus 2.9 |
-| 后端 | Node.js + Express + Prisma ORM | Node 18+ / Express 4 / Prisma 5 |
-| 数据库 | SQLite (开发) / MySQL (生产可切换) | SQLite 3 |
-| 认证 | JWT (JWT Token + Bearer) | jsonwebtoken |
-| 部署 | Docker + Docker Compose | Docker 24+ |
+| 层 | 技术 |
+|---|---|
+| 前端 | Vue 3.5 + Vite 8 + Element Plus 2.14 + Pinia + ECharts 6 |
+| 后端 | Node 20 + Express 4.19 + Prisma 5 |
+| 数据库 | PostgreSQL（生产，Render 托管）/ SQLite（本地开发） |
+| 认证 | JWT Bearer Token |
+| 部署 | Render Blueprint（render.yaml）/ Docker Compose（内网） |
 
 ## 系统架构
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  前端 (Vue 3 + Vite)              │
-│  74个视图 · 15模块 · CrudPage通用组件              │
-│  Vite代理: /api → localhost:3001                 │
-└───────────────────────┬─────────────────────────┘
-                        │ HTTP + JWT Bearer
-┌───────────────────────▼─────────────────────────┐
-│              后端 (Node.js + Express)              │
-│  86个CRUD路由 · crud()工厂 · JWT认证              │
-│  端口: 3001                                      │
-└───────────────────────┬─────────────────────────┘
-                        │ Prisma ORM
-┌───────────────────────▼─────────────────────────┐
-│              数据库 (SQLite / MySQL)               │
-│  Prisma schema: 86个模型, 1352行                  │
-└─────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  前端  Vue 3 + Vite + Element Plus                        │
+│  95 个视图 · CrudPage 配置驱动组件（93 模块零重复模板）    │
+└──────────────────────────┬───────────────────────────────┘
+                           │ HTTP + JWT Bearer
+┌──────────────────────────▼───────────────────────────────┐
+│  后端  Node 20 + Express                                  │
+│  107 条 /api 端点 · crud() 工厂 · JWT 认证 · 组织级隔离   │
+└──────────────────────────┬───────────────────────────────┘
+                           │ Prisma ORM
+┌──────────────────────────▼───────────────────────────────┐
+│  数据库  PostgreSQL（schema.prisma 109 模型 / 1824 行）   │
+└──────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ## 快速开始
 
-### 1. 环境准备
+### 本地开发
 
 ```bash
-# 要求: Node.js 18+, npm 9+, Docker 24+ (可选)
-node -v   # v18+
-npm -v    # v9+
-```
-
-### 2. 后端启动
-
-```bash
+# 后端
 cd backend
-npm install
+npm ci
 npx prisma generate
-npx prisma migrate dev --name init
-npx prisma db seed          # 种子数据: 8组织机构 + 4角色 + 3用户
-npm run dev                 # 端口 3001
-```
+npx prisma db push      # 建表
+npx prisma db seed      # 种子数据：8 组织 + 4 角色 + 3 用户
+npm run dev             # :3001
 
-### 3. 前端启动
-
-```bash
+# 前端
 cd frontend
-npm install
-npm run dev                 # 端口 3000
+npm ci
+npm run dev             # :3000
 ```
 
-### 4. 访问系统
+> `schema.prisma` 的 `provider` 为 `postgresql`。本地无 PostgreSQL 时，可临时改回
+> `provider = "sqlite"` + `DATABASE_URL="file:./dev.db"` 用单文件开发。
+> 仓库内 `schema.sqlite.prisma` / `schema.mysql.prisma` / `schema.postgresql.prisma`
+> 为三套 schema 存档，切换前请先合并业务模型改动。
 
-- 前端: http://localhost:3000
-- 后端API: http://localhost:3001/api/health
-- 默认账号: `admin` / `admin123`
+### Render 一键部署（生产）
 
-### 5. Docker部署
+仓库已含 `render.yaml` Blueprint，在 Render 点 **Deploy** 即自动创建
+PostgreSQL（basic-256mb）+ 后端容器 + 前端 Nginx 容器；后端启动时自动 `prisma db push` 并执行 seed。
+
+### 内网 Docker 部署
 
 ```bash
 docker compose up -d --build
-# 前端: http://localhost:80
-# 后端: http://localhost:3001
+# 前端 http://localhost:80   后端 :3001
 ```
+
+> **注意**：`docker/.env` 仍是 SQLite 连接串（`file:/app/prisma/dev.db`），而 `schema.prisma`
+> 的 `provider` 已切为 `postgresql`。按 PostgreSQL 部署时必须同步修改 `DATABASE_URL`。
 
 ---
 
-## 功能模块 (15个一级模块)
+## API 规范
 
-### 1. 目标管理
-- 安全规划 (`/api/plan`)
-- 年度目标 (`/api/objective`)
-- 年度计划 (`/api/annual-plan`)
-- 目标责任状 (`/api/objective-agreement`)
-- 计划反馈 (`/api/plan-feedback`)
+### 统一响应
 
-### 2. 组织构架
-- 安委会管理 (`/api/committee`)
-- 安全会议 (`/api/safety-meeting`)
-- 责任制 (`/api/responsibility`)
-- 安全组织机构 (`/api/safety-org`)
-
-### 3. 安全生产投入
-- 安全投入 (`/api/expenditure`)
-- 投入记录 (`/api/expenditure-record`)
-
-### 4. 制度化管理
-- 法律法规 (`/api/regulation`)
-- 规章制度 (`/api/internal-regulation`)
-- 合规评估 (`/api/compliance`)
-
-### 5. 教育培训
-- 安全证书 (`/api/certificate`)
-- 安全课程 (`/api/course`)
-- 题库管理 (`/api/exam-question`)
-- 考试管理 (`/api/exam`)
-- 考试记录 (`/api/exam-record`)
-- 培训记录 (`/api/training`)
-- 课程进度 (`/api/user-course`)
-- 师带徒 (`/api/mentor`)
-- 证书标准 (`/api/certificate-standard`)
-
-### 6. 生产设备设施
-- 设备管理 (`/api/equipment`)
-- 设备检修 (`/api/equipment-maintenance`)
-- 设备点检 (`/api/equipment-inspection`)
-- 化学品 (`/api/chemical`)
-- 特种设备 (`/api/special-eq`)
-- 特种设备点检 (`/api/special-eq-inspection`)
-- 消防区域 (`/api/fire-zone`)
-- 消防器材 (`/api/fire-equipment`)
-- 防火巡查计划 (`/api/fire-patrol-plan`)
-- 防火巡查 (`/api/fire-patrol`)
-- 危险设施 (`/api/hazard-facility`)
-
-### 7. 作业安全
-- 风险因素 (`/api/risk-factor`)
-- 安全观察 (`/api/observation`)
-- 安全检查 (`/api/work-safety-check`)
-- 作业许可 (`/api/work-permit`)
-- 变更管理 (`/api/change-request`)
-- 承包商 (`/api/contractor`)
-- 承包商审批 (`/api/contractor-approval`)
-- 承包商黑名单 (`/api/contractor-blacklist`)
-- 深井灌注监测 (`/api/deep-cast-monitor`)
-
-### 8. 危险源管理
-- 危险源识别 (`/api/risk-control`)
-- 风险排查项配置 (`/api/risk-inspection-config`)
-- 作业单元 (`/api/work-unit`)
-- 危险源评审 (`/api/risk-review`)
-- 危险源变更 (`/api/risk-change`)
-- 风险排查 (`/api/risk-inspection`)
-- 危险源地图 (`/api/risk-map`)
-
-### 9. 隐患排查治理
-- 隐患排查 (`/api/hazard`)
-- 排查计划 (`/api/inspection-plan`)
-- 隐患奖励 (`/api/hazard-reward`)
-- 违章管理 (`/api/violation`)
-- 安全积分 (`/api/safety-score`)
-
-### 10. 职业健康
-- PPE物品目录 (`/api/ppe`)
-- PPE发放记录 (`/api/ppe-issue`)
-- 剂量计 (`/api/dosimeter`)
-- 警示标识 (`/api/warning-sign`)
-- 防护设施 (`/api/protective-facility`)
-- 职业健康档案 (`/api/occupational`)
-
-### 11. 应急管理
-- 应急预案 (`/api/emergency`)
-- 应急队伍 (`/api/emergency-team`)
-- 应急物资 (`/api/emergency-supplies`)
-- 演练计划 (`/api/drill-plan`)
-- 演练记录 (`/api/drill-record`)
-- 演练评估 (`/api/drill-assessment`)
-
-### 12. 事故管理
-- 事故报告 (`/api/accident`)
-- 事故调查 (`/api/accident-investigation`)
-- 事故沟通 (`/api/accident-communication`)
-- 责任认定 (`/api/accident-responsibility`)
-- 整改措施 (`/api/accident-action`)
-- 事故档案 (`/api/accident-archive`)
-
-### 13. 绩效改进
-- 绩效评定 (`/api/performance`)
-- 持续改进 (`/api/improvement`)
-
-### 14. 系统管理
-- 组织机构 (`/api/org`)
-- 用户管理 (`/api/user`)
-- 角色管理 (`/api/role`)
-- 系统参数 (`/api/param`)
-
-### 15. 个人工作台
-- 我的待办 (`/api/todo`)
-- 消息通知 (`/api/notification`)
-
----
-
-## API 接口规范
-
-### 认证
-
-```bash
-# 登录
-POST /api/auth/login
-Content-Type: application/json
-{"username":"admin","password":"admin123"}
-→ {"code":200,"data":{"token":"***","user":{...}}}
-
-# 获取当前用户
-GET /api/auth/me
-Authorization: Bearer <token>
-```
-
-### CRUD 通用模式
-
-每个业务实体均提供标准CRUD接口：
-
-```bash
-# 新增
-POST /api/<entity>
-Content-Type: application/json
-Authorization: Bearer <token>
-
-# 查询列表 (分页)
-GET /api/<entity>?page=1&pageSize=20
-Authorization: Bearer <token>
-
-# 获取详情
-GET /api/<entity>/<id>
-Authorization: Bearer <token>
-
-# 更新
-PUT /api/<entity>/<id>
-Content-Type: application/json
-Authorization: Bearer <token>
-
-# 删除
-DELETE /api/<entity>/<id>
-Authorization: Bearer <token>
+```json
+{"code": 200, "message": "ok", "data": {}}
 ```
 
 ### 通用查询参数
 
 | 参数 | 说明 | 示例 |
-|------|------|------|
-| page | 页码 | 1 |
-| pageSize | 每页条数 | 20 |
-| search | 关键词搜索 | 安全帽 |
-| status | 状态筛选 | active |
-| orgId | 组织机构筛选 | 1 |
+|---|---|---|
+| `page` / `pageSize` | 分页（默认 1 / 20） | `?page=1&pageSize=20` |
+| `<字段名>` | 模糊搜索（`contains`） | `?name=安全帽` |
+| `<字段名>` | 精确筛选，支持逗号多值（转 Prisma `in`） | `?status=active,closed` |
+| `orgId` / `userId` | 组织 / 用户隔离筛选 | `?orgId=cml2xxx` |
+
+> 各字段是否可筛由对应路由 `crud()` 的 `filters`（模糊）与 `exact`（精确）声明决定，
+> 见 `backend/src/routes/*.js`。
+
+### CRUD 五接口
+
+`POST /api/<entity>` · `GET /api/<entity>` · `GET /api/<entity>/:id` · `PUT /api/<entity>/:id` · `DELETE /api/<entity>/:id`
+
+所有业务实体由 `crud('ModelName')` 工厂统一生成，内建三项处理：
+- **orgId 自动注入**：前端未传时取当前用户 orgId，未绑定组织则回退首个组织
+- **字段白名单**：`onlyKnownFields` 过滤模型外字段，规避 Prisma 400
+- **日期规范化**：`YYYY-MM-DD` → ISO-8601，空值 → `null`
+
+### 特殊端点
+
+| 端点 | 说明 |
+|---|---|
+| `POST /api/auth/login` | 登录，返回 `data.token` |
+| `GET /api/auth/me` | 当前用户（含组织 / 角色） |
+| `/api/dashboard/*` | 仪表盘聚合统计 |
+| `POST /api/upload` | 文件上传（multer） |
 
 ---
 
-## 数据库模型 (86个)
+## 数据库模型（109 个）
 
-Prisma schema: `backend/prisma/schema.prisma` (1352行)
+`backend/prisma/schema.prisma`，1824 行
 
-```
-目标管理:  SafetyPlan, Objective, ObjectiveAgreement, AnnualPlan, PlanFeedback
-组织构架:  Organization, Committee, SafetyMeeting, Responsibility, SafetyOrg
-安全投入:  Expenditure, ExpenditureRecord
-制度化管理: Regulation, InternalRegulation, Compliance
-教育培训:  Certificate, CertificateStandard, Course, ExamQuestion, Exam, ExamRecord,
-           Training, UserCourse, Mentor
-设备设施:  Equipment, EquipmentMaintenance, EquipmentInspection, Chemical,
-           HazardFacility, SpecialEquipment, SpecialEquipmentInspection,
-           FireZone, FireEquipment, FirePatrol, FirePatrolPlan
-作业安全:  RiskFactor, Observation, WorkSafetyCheck, WorkPermit, ChangeRequest,
-           Contractor, ContractorApproval, ContractorBlacklist, DeepCastMonitor
-危险源:    RiskControl, RiskInspectionConfig, WorkUnit, RiskReview, RiskChange,
-           RiskInspection, RiskMap
-隐患治理:  Hazard, InspectionPlan, HazardReward, Violation, SafetyScore
-职业健康:  PPEItem, PPEIssue, Dosimeter, WarningSign, ProtectiveFacility, Occupational
-应急管理:  Emergency, EmergencyTeam, EmergencySupplies, DrillPlan, DrillRecord, DrillAssessment
-事故管理:  Accident, AccidentInvestigation, AccidentCommunication,
-           AccidentResponsibility, AccidentAction, AccidentArchive
-绩效改进:  Performance, Improvement
-系统管理:  User, Role, Authorization, Parameter, Log, Todo, Notification
-基础设施:  File
+| 业务域 | 模型 |
+|---|---|
+| 系统管理 | Organization, User, Role, Authorization, SystemParameter |
+| 目标管理 | SafetyPlan, AnnualObjective, ObjectiveResponsibilityAgreement, AnnualPlan, PlanFeedback |
+| 组织构架与职责 | SafetyCommittee, SafetyCommitteeMember, SafetyMeeting, SafetyManagementOrg, ResponsibilitySystem, ResponsibilityFeedback |
+| 安全生产投入 | SafetyExpenditurePlan, SafetyExpenditureRecord |
+| 制度化管理 | LegalRegulation, InternalRegulation, ComplianceAssessment |
+| 教育培训 | SafetyCertificate, CertificateStandard, SafetyCourse, UserCourse, ExamQuestion, Exam, ExamRecord, SafetyTraining, Mentor |
+| 生产设备设施 | Equipment, EquipmentMaintenance, EquipmentInspection, Chemical, HazardFacility, SpecialEquipment, SpecialEquipmentInspection, FireZone, FireEquipment, FirePatrol, FirePatrolPlan |
+| 作业安全 | RiskFactor, SafetyObservation, Contractor, ContractorApproval, ContractorBlacklist, ChangeRequest, WorkPermit, WorkSafetyCheck, DeepCastMonitor |
+| 危险源监控 | WorkUnit, RiskControlList, RiskChange, RiskReview, RiskMap, RiskInspectionConfig, RiskInspection |
+| 隐患排查治理 | InspectionPlan, Hazard, HazardReward, ViolationClause, Violation, MajorHazard, SafetyInspection, HazardRemediationEvaluation |
+| 职业健康 | OccupationalHazardPosition, OccupationalExposurePerson, OccupationalExamPlan, OccupationalExamResult, ProtectiveFacility, DosimeterRecord, PPEItem, PPEIssue, WarningSign |
+| 应急管理 | EmergencyPlan, DrillPlan, DrillRecord, DrillAssessment, EmergencyTeam, EmergencySupplies |
+| 事故调查和处理 | AccidentReport, AccidentInvestigation, AccidentActionPlan, AccidentCommunication, AccidentResponsibility, AccidentArchive |
+| 绩效评定和持续改进 | PerformanceReview, PerformanceAssessment, SafetyKpi, ContinuousImprovement, NearMiss |
+| 个人工作台 | TodoItem, Notification |
+| GB/T 33000-2025 领导作用 | SafetyLeadership, LeadershipEvaluation |
+| GB/T 33000-2025 基础保障 | TechnologyProtection |
+| GB/T 33000-2025 策划 | SafetyPhilosophy, SafetyCommunication |
+| GB/T 33000-2025 人员管理 | PersonnelEntry, UnsafeBehavior |
+| GB/T 33000-2025 现场管理 | AbnormalHandling |
+| GB/T 46884.1-2025 工业互联网 | WorkBehaviorMonitoring |
+| **十四、环境管理** | WastewaterEmission, ExhaustEmission, SolidWasteRecord, NoiseMonitoring, SoilMonitoring, EnvPermit |
+
+---
+
+## 种子数据
+
+| 类型 | 数量 | 内容 |
+|---|---|---|
+| 组织机构 | 8 | 永杰集团 → 运营中心 → 昆山工厂 →（安保部 / 熔铸车间 / 冷轧车间 / 热轧车间 / 仓储物流） |
+| 角色 | 4 | 系统管理员、安保经理、安保工程师、员工 |
+| 用户 | 3 | `admin` / `fanhaobin` / `zhangsan`，密码均 `admin123` |
+| 系统参数 | 1 | 系统名称 |
+
+## 环境变量（backend/.env）
+
+```env
+DATABASE_URL="postgresql://user:pass@host:5432/ehs"    # 生产必须 PostgreSQL
+JWT_SECRET="***"               # 生产务必更换
+JWT_EXPIRES_IN="7d"
+PORT=3001
+UPLOAD_DIR="./uploads"
+ALLOWED_ORIGINS="https://ehs-frontend.onrender.com"    # CORS 白名单，逗号分隔
 ```
 
 ---
@@ -285,140 +274,49 @@ Prisma schema: `backend/prisma/schema.prisma` (1352行)
 
 ```
 EHS智能系统/
-├── backend/                        # 后端
+├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma           # Prisma schema (86模型, 1352行)
-│   │   ├── seed.js                 # 种子数据
-│   │   └── dev.db                  # SQLite数据库
+│   │   ├── schema.prisma          # 109 模型（provider: postgresql）
+│   │   ├── seed.js                # 种子数据
+│   │   ├── schema.sqlite.prisma   # 历史多库 schema 存档
+│   │   ├── schema.mysql.prisma
+│   │   ├── schema.postgresql.prisma
+│   │   └── dev.db                 # SQLite 开发库
 │   ├── src/
-│   │   ├── index.js                # 应用入口 (86路由注册)
-│   │   ├── utils/
-│   │   │   └── common.js           # 公共工具 (PrismaClient+auth+crud工厂)
-│   │   └── routes/                 # 86个路由文件
-│   │       ├── auth.js             # 认证 (完整实现)
-│   │       ├── dashboard.js        # 仪表盘统计 (完整实现)
-│   │       ├── upload.js           # 文件上传 (multer)
-│   │       └── *.js                # 83个crud工厂调用
-│   ├── uploads/                    # 上传文件目录
-│   ├── package.json
-│   ├── Dockerfile
+│   │   ├── index.js               # 入口：107 条路由 + 启动自动 db push + seed
+│   │   ├── utils/common.js        # PrismaClient / auth / crud 工厂 / 数据规范化
+│   │   └── routes/                # 107 个路由（auth、dashboard、upload 为独立实现）
+│   ├── Dockerfile                 # node:20-alpine + OpenSSL
 │   └── .env
-├── frontend/                       # 前端
+├── frontend/
 │   ├── src/
-│   │   ├── main.js                 # 入口
-│   │   ├── App.vue                 # 根组件
-│   │   ├── api/
-│   │   │   └── index.js            # axios封装 (baseURL: /api)
-│   │   ├── router/
-│   │   │   └── index.js            # 75条路由
-│   │   ├── stores/
-│   │   │   └── user.js             # Pinia用户store
-│   │   ├── layouts/
-│   │   │   └── MainLayout.vue      # 主布局 (侧边栏+顶栏+内容区)
-│   │   ├── components/
-│   │   │   └── CrudPage.vue        # 通用CRUD组件 (搜索+表格+表单+详情)
-│   │   ├── views/                  # 74个视图页面
-│   │   │   ├── Dashboard.vue       # 仪表盘
-│   │   │   ├── Login.vue           # 登录
-│   │   │   ├── target/             # 目标管理 (3)
-│   │   │   ├── orgStructure/       # 组织构架 (3)
-│   │   │   ├── expenditure/        # 安全投入 (1)
-│   │   │   ├── regulation/         # 制度化管理 (3)
-│   │   │   ├── training/           # 教育培训 (8)
-│   │   │   ├── equipment/          # 设备设施 (10)
-│   │   │   ├── workSafety/         # 作业安全 (9)
-│   │   │   ├── riskControl/        # 危险源 (7)
-│   │   │   ├── hazard/             # 隐患治理 (5)
-│   │   │   ├── health/             # 职业健康 (6)
-│   │   │   ├── emergency/          # 应急管理 (4)
-│   │   │   ├── accident/           # 事故管理 (6)
-│   │   │   ├── performance/        # 绩效改进 (2)
-│   │   │   ├── system/             # 系统管理 (4)
-│   │   │   └── profile/            # 个人工作台 (2)
-│   │   └── assets/
-│   │       └── main.css            # 全局样式
-│   ├── dist/                       # 构建产物 (78个JS模块)
-│   ├── vite.config.js              # Vite配置 (proxy: /api→3001)
-│   └── Dockerfile
-├── docker/                         # Docker配置
-│   ├── nginx.conf                  # Nginx反向代理
-│   └── .env                        # 环境变量
-├── docker-compose.yml              # Docker编排
-├── .dockerignore
+│   │   ├── main.js                # 全局注册 Element Plus + 全部图标
+│   │   ├── api/index.js           # axios 封装（baseURL: VITE_API_BASE_URL）
+│   │   ├── router/index.js        # 96 条路由
+│   │   ├── stores/user.js         # Pinia 用户 store
+│   │   ├── layouts/MainLayout.vue # 侧边栏 menuGroups（硬编码，新增模块须同步改此文件）
+│   │   ├── components/CrudPage.vue# 配置驱动通用组件：搜索+表格+表单+详情
+│   │   └── views/                 # 95 个视图，按要素分子目录
+│   ├── vite.config.js
+│   └── Dockerfile                 # 多阶段：Vite 构建 → nginx:alpine
+├── docker/                        # nginx.conf + .env
+├── docker-compose.yml
+├── render.yaml                    # Render Blueprint 一键部署
 └── README.md
 ```
-
----
-
-## 种子数据
-
-| 类型 | 数量 | 说明 |
-|------|------|------|
-| 组织机构 | 8 | 永杰集团→运营中心→昆山工厂→(安全/生产/设备/人力/行政) |
-| 角色 | 4 | 管理员、安保经理、安保工程师、员工 |
-| 用户 | 3 | admin/admin123, fanhaobin/admin123, zhangsan/admin123 |
-| 系统参数 | 1 | 系统名称 |
-
----
-
-## 环境变量 (backend/.env)
-
-```env
-DATABASE_URL="file:./dev.db"           # SQLite路径 (生产改mysql://)
-JWT_SECRET="ehs-secret-2024"           # JWT密钥 (生产务必更换)
-JWT_EXPIRES_IN="7d"                    # Token有效期
-PORT=3001                              # 后端端口
-UPLOAD_DIR="./uploads"                 # 上传目录
-```
-
----
-
-## 部署说明
-
-### 内网服务器部署
-
-```bash
-# 1. 同步代码
-scp -r EHS智能系统/ user@server:/opt/ehs/
-
-# 2. 修改.env (数据库/密钥/端口)
-
-# 3. Docker部署
-cd /opt/ehs
-docker compose up -d --build
-
-# 4. Nginx反向代理 (可选)
-server {
-    listen 80;
-    server_name ehs.yongjie.local;
-    location / {
-        proxy_pass http://frontend:80;
-    }
-    location /api {
-        proxy_pass http://backend:3001;
-    }
-}
-```
-
-### 切换MySQL
-
-1. 修改 `backend/.env`: `DATABASE_URL="mysql://user:pass@host:3306/ehs"`
-2. 修改 `schema.prisma`: `provider = "mysql"`
-3. 执行 `npx prisma migrate dev`
 
 ---
 
 ## 开发统计
 
 | 指标 | 数值 |
-|------|------|
-| 一级模块 | 15 |
-| 数据库模型 | 86 |
-| 后端路由文件 | 86 |
-| 前端视图页面 | 74 |
-| 前端路由条目 | 75 |
-| Prisma schema | 1352行 |
-| 构建产物(JS模块) | 78 |
-| CrudPage组件 | 1 (配置驱动, 复用74个视图) |
-
-<!-- Deploy trigger: 2026-10-09 16:25:02 -->
+|---|---|
+| 功能模块大类 | 14（13 要素 + 环境管理） |
+| 前端菜单入口 | 93 项子模块（+ 个人工作台 2 项） |
+| 前端视图页面 | 95 |
+| 前端路由条目 | 96 |
+| Prisma 数据模型 | 109 |
+| Prisma schema | 1824 行 |
+| 后端路由文件 | 107 |
+| `/api` 端点注册 | 107 |
+| CrudPage 复用 | 1 个组件覆盖 93 个模块 |
