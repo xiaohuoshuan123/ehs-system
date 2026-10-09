@@ -1732,7 +1732,7 @@ model SolidWasteRecord {
   id            String   @id @default(cuid())
   orgId         String
   wasteName     String            // 废物名称
-  wasteCode     String            // 危险废物废物代码 (GB 5085, 8位)
+  wasteCode     String?           // 危险废物废物代码 (GB 5085, 8位) - 一般固废无此代码
   category      String            // general/solid/hazardous
   hazardClass   String   @default("none") // none/toxicity/corrosive/flammable/infectious 等危险特性
   originProcess String            // 产生工序
@@ -1741,10 +1741,10 @@ model SolidWasteRecord {
   unit          String   @default("kg")
   storageLocation String          // 贮存场所/危废间位置
   storageDays   Int?              // 贮存天数
-  transportUnit String            // 承运单位
+  transportUnit String?           // 承运单位 (转移阶段填写, 产生/贮存阶段为空)
   carrierLicense String?          // 承运资质编号
-  disposalMethod String           // 处置方式: incinerate/solidify/utilize
-  disposalUnit  String            // 处置单位
+  disposalMethod String?          // 处置方式: incinerate/solidify/utilize
+  disposalUnit  String?           // 处置单位 (处置阶段填写)
   disposalUnitLicense String?     // 处置单位危废经营许可编号
   manifestNo    String?           // 转移联单编号
   responsiblePerson String @default("")
