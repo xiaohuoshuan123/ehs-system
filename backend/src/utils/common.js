@@ -187,7 +187,14 @@ function crud(modelName, opts = {}) {
       Object.entries(filters).forEach(([k, type]) => {
         if (q[k]) where[k] = { contains: q[k] };
       });
-      exact.forEach(k => { if (q[k]) where[k] = q[k]; });
+      exact.forEach(k => {
+        if (q[k] == null || q[k] === '') return;
+        // 支持数组(multi-select)或逗号分隔字符串(dashboard链接),统一转 Prisma `in` 数组
+        const vals = Array.isArray(q[k])
+          ? q[k].filter(Boolean)
+          : String(q[k]).split(',').map(s => s.trim()).filter(Boolean);
+        where[k] = vals.length === 1 ? vals[0] : vals;
+      });
       // 组织过滤
       if (q.orgId) where.orgId = q.orgId;
       if (q.userId) where.userId = q.userId;
