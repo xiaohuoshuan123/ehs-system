@@ -143,8 +143,12 @@ const form = ref({
 async function submitForm() {
   submitting.value = true
   try {
+    // 显式带 orgId：后端 SafetyKpi.orgId 为必填字段，缺失会报
+    // "Argument orgId is missing"。后端也会用当前用户 orgId 兜底，此处双保险。
+    const user = JSON.parse(localStorage.getItem('ehs_user') || '{}')
     await api.post('/safety-kpi', {
       ...form.value,
+      orgId: form.value.orgId || user.orgId || '',
       year: Number(form.value.year),
       month: Number(form.value.month || 0)
     })
