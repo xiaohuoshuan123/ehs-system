@@ -18,7 +18,7 @@
             </el-sub-menu>
             <el-menu-item v-else :index="group.children[0].path">
               <el-icon><component :is="group.icon" /></el-icon>
-              <span>{{ group.children[0].title }}</span>
+              <span>{{ group.title.includes('、') ? group.title : group.children[0].title }}</span>
             </el-menu-item>
           </template>
         </el-menu>
@@ -47,7 +47,7 @@
               </el-sub-menu>
               <el-menu-item v-else :index="group.children[0].path">
                 <el-icon><component :is="group.icon" /></el-icon>
-                <span>{{ group.children[0].title }}</span>
+                <span>{{ group.title.includes('、') ? group.title : group.children[0].title }}</span>
               </el-menu-item>
             </template>
           </el-menu>
