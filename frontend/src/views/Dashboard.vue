@@ -85,10 +85,10 @@ const notificationApi = crudApi('/notification')
 function formatDate(d) { return d ? new Date(d).toLocaleDateString('zh-CN') : '' }
 
 onMounted(async () => {
-  // 加载仪表盘数据
+  // 加载仪表盘数据（axios 拦截器已解包，直接就是 { summary, monthlyHazards, ... }）
   try {
     dashData = await api.get('/dashboard')
-    const s = dashData?.data?.summary || {}
+    const s = dashData?.summary || {}
     statCards.value = [
       { title: '隐患总数', value: s.hazardTotal || 0, sub: `待整改: ${s.hazardOpen || 0}`, icon: 'Warning', color: '#e6a23c' },
       { title: '逾期未整改', value: s.hazardOverdue || 0, sub: '需要立即处理', icon: 'CircleClose', color: '#f56c6c' },
@@ -115,7 +115,7 @@ onMounted(async () => {
   notifications.value = notis.data || []
 
   // 隐患分类图表
-  const hazardCats = dashData.data?.monthlyHazards || []
+  const hazardCats = dashData?.monthlyHazards || []
   if (hazardChartRef.value && hazardCats.length) {
     const chart = echarts.init(hazardChartRef.value)
     chart.setOption({
@@ -125,7 +125,7 @@ onMounted(async () => {
   }
 
   // 风险等级图表
-  const riskDist = dashData.data?.riskDistribution || []
+  const riskDist = dashData?.riskDistribution || []
   if (riskChartRef.value && riskDist.length) {
     const chart = echarts.init(riskChartRef.value)
     chart.setOption({
