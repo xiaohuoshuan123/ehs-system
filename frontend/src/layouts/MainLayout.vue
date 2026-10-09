@@ -1,7 +1,7 @@
 <template>
   <el-container class="layout-container">
-    <!-- 侧边栏 -->
-    <el-aside :width="collapse ? '64px' : '220px'" class="sidebar">
+    <!-- 侧边栏 - 桌面端固定，移动端抽屉 -->
+    <el-aside :width="collapse ? '64px' : '220px'" class="sidebar hidden-mobile" :class="{ 'sidebar-collapsed': collapse }">
       <div class="logo">
         <span v-if="!collapse">EHS 安全系统</span>
         <span v-else>E</span>
@@ -25,12 +25,45 @@
       </el-scrollbar>
     </el-aside>
 
+    <!-- 移动端抽屉遮罩 -->
+    <div v-if="mobileMenuOpen" class="mobile-overlay" @click="mobileMenuOpen = false"></div>
+
+    <!-- 移动端侧边栏 -->
+    <transition name="slide">
+      <div v-if="mobileMenuOpen" class="mobile-sidebar">
+        <div class="logo">
+          <span>EHS 安全系统</span>
+          <el-icon class="close-btn" @click="mobileMenuOpen = false"><Close /></el-icon>
+        </div>
+        <el-scrollbar style="height: calc(100vh - 56px)">
+          <el-menu :collapse="false" :collapse-transition="false" background-color="#1e6d3a" text-color="#ffffffa6" active-text-color="#fff" router @select="mobileMenuOpen = false">
+            <template v-for="group in menuGroups">
+              <el-sub-menu v-if="group.children.length > 1" :index="group.title">
+                <template #title><el-icon><component :is="group.icon" /></el-icon><span>{{ group.title }}</span></template>
+                <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
+                  <el-icon v-if="item.icon"><component :is="item.icon" /></el-icon>
+                  <span>{{ item.title }}</span>
+                </el-menu-item>
+              </el-sub-menu>
+              <el-menu-item v-else :index="group.children[0].path">
+                <el-icon><component :is="group.icon" /></el-icon>
+                <span>{{ group.children[0].title }}</span>
+              </el-menu-item>
+            </template>
+          </el-menu>
+        </el-scrollbar>
+      </div>
+    </transition>
+
     <!-- 主区域 -->
     <el-container direction="vertical">
       <el-header class="header">
         <div class="header-left">
-          <el-icon class="collapse-btn" @click="collapse = !collapse"><component :is="collapse ? 'Expand' : 'Fold'" /></el-icon>
-          <el-breadcrumb separator="/">
+          <!-- 桌面端折叠按钮 -->
+          <el-icon class="collapse-btn hidden-mobile" @click="collapse = !collapse"><component :is="collapse ? 'Expand' : 'Fold'" /></el-icon>
+          <!-- 移动端菜单按钮 -->
+          <el-icon class="collapse-btn hidden-desktop" @click="mobileMenuOpen = true"><Menu /></el-icon>
+          <el-breadcrumb separator="/" class="hidden-mobile">
             <el-breadcrumb-item>{{ $route.meta.group || '工作台' }}</el-breadcrumb-item>
             <el-breadcrumb-item>{{ $route.meta.title }}</el-breadcrumb-item>
           </el-breadcrumb>
@@ -39,8 +72,8 @@
           <el-dropdown @command="handleCommand">
             <span class="user-info">
               <el-icon><UserFilled /></el-icon>
-              {{ userStore.username }}
-              <el-icon><ArrowDown /></el-icon>
+              <span class="hidden-mobile">{{ userStore.username }}</span>
+              <el-icon class="hidden-mobile"><ArrowDown /></el-icon>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
@@ -67,6 +100,7 @@ import { useUserStore } from '../stores/user'
 const userStore = useUserStore()
 const router = useRouter()
 const collapse = ref(false)
+const mobileMenuOpen = ref(false)
 
 // 菜单配置 - 按分组
 const menuGroups = [
@@ -132,7 +166,7 @@ function handleCommand(cmd) {
 <style scoped>
 .layout-container { height: 100vh; }
 .sidebar { background: #1e6d3a; transition: width 0.3s; overflow: hidden; }
-.logo { height: 56px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; border-bottom: 1px solid #ffffff20; }
+.logo { height: 56px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; font-weight: bold; border-bottom: 1px solid #ffffff20; gap: 12px; }
 .header { background: #fff; border-bottom: 1px solid #e4e7ed; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; height: 56px; }
 .header-left { display: flex; align-items: center; gap: 16px; }
 .collapse-btn { font-size: 20px; cursor: pointer; color: #606266; }
@@ -143,4 +177,29 @@ function handleCommand(cmd) {
 :deep(.el-menu-item.is-active) { background-color: #17542c !important; }
 :deep(.el-menu-item:hover) { background-color: #2a8048 !important; }
 :deep(.el-sub-menu .el-menu) { background-color: #17542c !important; }
+
+/* 移动端侧边栏抽屉 */
+.mobile-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 2000;
+}
+.mobile-sidebar {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 260px; background: #1e6d3a; z-index: 2001;
+  display: flex; flex-direction: column;
+}
+.close-btn { cursor: pointer; color: #fff; font-size: 20px; }
+
+/* 抽屉滑入动画 */
+.slide-enter-active, .slide-leave-active {
+  transition: transform 0.3s ease;
+}
+.slide-enter-from, .slide-leave-to {
+  transform: translateX(-100%);
+}
+
+/* 移动端 header 紧凑 */
+@media (max-width: 767px) {
+  .header { padding: 0 12px; }
+}
 </style>
