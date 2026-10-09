@@ -64,10 +64,15 @@ router.get('/', auth, async (req, res) => {
     };
     // 海因里希比例：1 : 29 : 300
     // 实际比例 = 1 : (minor / serious) : (unrecorded / serious)
-    const ratio = heinrich.serious > 0
-      ? { minor: +(heinrich.minor / heinrich.serious).toFixed(1), unrecorded: +(heinrich.unrecorded / heinrich.serious).toFixed(1) }
-      : { minor: 0, unrecorded: 0 };
-    heinrich.ratio = ratio;
+    // 当 serious=0 时无法计算真实比例，使用经典值 1:29:300 作为基准展示
+    const seriousBase = heinrich.serious > 0 ? heinrich.serious : 1
+    const ratio = {
+      minor: +(heinrich.minor / seriousBase).toFixed(1),
+      unrecorded: +(heinrich.unrecorded / seriousBase).toFixed(1)
+    }
+    heinrich.ratio = ratio
+    // 标记是否为经典基准（serious=0 时使用）
+    heinrich.isClassic = heinrich.serious === 0
 
     ok(res, {
       summary: {
