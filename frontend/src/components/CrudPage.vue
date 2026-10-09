@@ -6,15 +6,15 @@
       <el-select v-for="sf in allSearchFields.filter(f => f.type === 'select')" :key="sf.field" v-model="searchParams[sf.field]" :placeholder="sf.label" clearable style="width:200px" :multiple="Array.isArray(searchParams[sf.field])" collapse-tags @change="loadData">
         <el-option v-for="opt in sf.options" :key="opt.value" :label="opt.label" :value="opt.value" />
       </el-select>
-      <el-button type="primary" @click="loadData"><el-icon><Search /></el-icon>搜索</el-button>
-      <el-button @click="resetSearch"><el-icon><Refresh /></el-icon>重置</el-button>
+      <el-button type="primary" @click="loadData"><el-icon><Search /></el-icon><span class="hidden-mobile">搜索</span></el-button>
+      <el-button @click="resetSearch"><el-icon><Refresh /></el-icon><span class="hidden-mobile">重置</span></el-button>
     </div>
 
     <!-- 工具栏 -->
     <div class="toolbar">
-      <el-button type="primary" @click="openDialog()" v-if="config.canCreate !== false"><el-icon><Plus /></el-icon>新增</el-button>
-      <el-button @click="loadData"><el-icon><Refresh /></el-icon>刷新</el-button>
-      <el-button @click="handleExport"><el-icon><Download /></el-icon>导出</el-button>
+      <el-button type="primary" @click="openDialog()" v-if="config.canCreate !== false"><el-icon><Plus /></el-icon><span class="hidden-mobile">新增</span></el-button>
+      <el-button @click="loadData"><el-icon><Refresh /></el-icon><span class="hidden-mobile">刷新</span></el-button>
+      <el-button @click="handleExport"><el-icon><Download /></el-icon><span class="hidden-mobile">导出</span></el-button>
     </div>
 
     <!-- 数据表格 -->
@@ -42,16 +42,16 @@
     </el-table>
 
     <!-- 分页 -->
-    <div style="display:flex;justify-content:flex-end;margin-top:16px">
-      <el-pagination v-model:current-page="pagination.page" v-model:page-size="pagination.pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" @current-change="loadData" @size-change="loadData" />
+    <div class="pagination-wrap">
+      <el-pagination v-model:current-page="pagination.page" v-model:page-size="pagination.pageSize" :total="total" :page-sizes="[10, 20, 50, 100]" :layout="isMobile ? 'total, prev, pager, next' : 'total, sizes, prev, pager, next, jumper'" @current-change="loadData" @size-change="loadData" />
     </div>
 
     <!-- 新增/编辑弹窗 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="650px" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="dialogTitle" :width="dialogWidth" destroy-on-close>
       <div class="dialog-form">
-        <el-form ref="formRef" :model="formData" :rules="formRules" label-width="120px" label-position="right">
+        <el-form ref="formRef" :model="formData" :rules="formRules" :label-width="isMobile ? '80px' : '120px'" label-position="right">
           <el-row :gutter="16">
-            <el-col :span="12" v-for="field in formFields" :key="field.field">
+            <el-col :xs="24" :sm="12" v-for="field in formFields" :key="field.field">
               <el-form-item :label="field.label" :prop="field.field">
                 <!-- 输入框 -->
                 <el-input v-if="!field.type || field.type === 'input'" v-model="formData[field.field]" :placeholder="field.placeholder || field.label" :disabled="field.disabled" />
@@ -88,8 +88,8 @@
     </el-dialog>
 
     <!-- 详情弹窗 -->
-    <el-dialog v-model="detailVisible" title="详情" width="650px">
-      <el-descriptions :column="2" border>
+    <el-dialog v-model="detailVisible" title="详情" :width="dialogWidth">
+      <el-descriptions :column="isMobile ? 1 : 2" border>
         <el-descriptions-item v-for="col in columns" :key="col.field" :label="col.label" :span="col.span || 1">
           <el-tag v-if="col.type === 'tag'" :type="statusMap[col.field]?.[detailData[col.field]]?.type || 'info'" size="small">{{ statusMap[col.field]?.[detailData[col.field]]?.label || detailData[col.field] }}</el-tag>
           <span v-else>{{ col.type === 'date' ? formatDate(detailData[col.field]) : (col.type === 'boolean' ? (detailData[col.field] ? '是' : '否') : detailData[col.field]) }}</span>
@@ -100,7 +100,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { crudApi } from '../api'
@@ -114,6 +114,12 @@ const { config } = props
 const api = crudApi(config.endpoint)
 const route = useRoute()
 const router = useRouter()
+
+// 响应式：检测移动端
+const windowWidth = ref(window.innerWidth)
+const isMobile = computed(() => windowWidth.value < 768)
+const dialogWidth = computed(() => isMobile.value ? '95%' : '650px')
+function onResize() { windowWidth.value = window.innerWidth }
 
 // 数据
 const loading = ref(false)
@@ -191,6 +197,11 @@ onMounted(() => {
   // URL 显式指定页码时优先（便于后续“下一页”直达场景）
   if (route.query.page) pagination.page = Math.max(1, parseInt(route.query.page) || 1)
   loadData()
+  window.addEventListener('resize', onResize)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onResize)
 })
 
 function openDialog(row) {
@@ -263,4 +274,23 @@ function handleExport() {
 
 <style scoped>
 .page-container { padding: 20px; }
+
+/* 搜索栏与工具栏 */
+.search-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+
+/* 移动端：搜索栏每项占满宽 */
+@media (max-width: 767px) {
+  .page-container { padding: 12px; }
+  .search-bar .el-input,
+  .search-bar .el-select { width: 100% !important; }
+  .search-bar .el-button { width: calc(50% - 4px); }
+  .toolbar .el-button { flex: 1; }
+  /* 分页简化 */
+  .pagination-wrap { display: flex; justify-content: center; margin-top: 12px; }
+  .el-pagination { justify-content: center; }
+}
+@media (min-width: 768px) {
+  .pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
+}
 </style>
