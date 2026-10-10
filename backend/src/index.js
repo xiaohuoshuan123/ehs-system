@@ -219,7 +219,12 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ code: err.status || 500, message: err.message });
 });
 
-// ---- 进程级兜底: 捕获异步 rejection / 未处理异常 ----
+// 迁移状态: health / _diag 端点据此报告。
+// 注意: 必须声明在引用它们的端点定义之前, 避免依赖执行时序。
+let dbMigrationOk = false;
+let dbMigrationErr = '';
+
+// 进程级兜底: 捕获异步 rejection / 未处理异常 ----
 // 关键背景: Express 4 不会捕获 async handler 的 rejected promise,
 // 而 Node 20 的 unhandledRejection 默认行为是 throw -> 进程直接退出,
 // 客户端表现为 502, 且服务需 Render 重启。这正是自评打分暂存接口
@@ -237,90 +242,26 @@ process.on('uncaughtException', (err) => {
   console.error('⚠️ [CRASH-CAUGHT] uncaughtException:', (err && err.message || String(err)).substring(0, 600));
 });
 
-// 数据库诊断端点: 用 raw Prisma 查询线上库真实状态
-// 用途: schema 变更不生效时, 无需本地 Postgres 复现即可定位
-//  (1) 哪张表/列已存在  (2) db push 的真实 stderr
-//   迁移状态: dbOk / dbMigrationErr
-app.get('/api/_diag', async (req, res) => {
-  const { prisma } = require('./utils/common');
-  const out = { dbOk: dbMigrationOk, dbMigrationErr, lastCrash, checks: {} };
-  try {
-    // 直接查 information_schema, 不经 ORM, 反映数据库真实结构
-    const q = async (sql) => await prisma.$queryRawUnsafe(sql);
-    // 新表是否存在
-    out.checks.selfAssessmentTable = !!(await q(
-      "SELECT 1 FROM information_schema.tables WHERE table_name='SelfAssessment' LIMIT 1"));
-    // 新增列是否存在
-    out.checks.itemAssessorCols = await q(
-      "SELECT column_name FROM information_schema.columns WHERE table_name='SelfAssessmentItem' AND column_name IN ('assessorId','assessorName')");
-    // SelfAssessmentItem 全部列
-    out.checks.itemCols = (await q(
-      "SELECT column_name FROM information_schema.columns WHERE table_name='SelfAssessmentItem' ORDER BY ordinal_position")).map(r => r.column_name);
-    // 唯一约束/索引
-    out.checks.itemIndexes = await q(
-      "SELECT indexname, indexdef FROM pg_indexes WHERE tablename='SelfAssessmentItem'");
-    // 各年度评分点数
-    out.checks.yearCounts = await q(
-      "SELECT year, count(*)::int AS n FROM \"SelfAssessmentItem\" GROUP BY year ORDER BY year");
-    // ---- 下面两行用 ORM(非 raw SQL), 反映 Prisma client 的真实视角 ----
-    // 用于区分: "表真的不存在" vs "表存在但 Prisma client 不认识该模型"
-    out.checks.assessorModelInClient = !!prisma.selfAssessment;
-    try {
-      out.checks.assessorCount = await prisma.selfAssessment.count();
-      out.checks.assessorRows = (await prisma.selfAssessment.findMany(
-        { select: { year: true, status: true, itemTotal: true }, take: 5 })).length;
-    } catch (e2) {
-      out.checks.assessorOrmErr = String(e2.message).substring(0, 300);
-    }
-    try {
-      out.checks.itemWithAssessor = await prisma.selfAssessmentItem.count();
-    } catch (e3) {
-      out.checks.itemOrmErr = String(e3.message).substring(0, 300);
-    }
-    // ---- 关键探针: 校验 item upsert 调用是否合法 (零写入) ----
-    // 做法: 在事务里先执行真实 upsert, 成功后主动抛错回滚整个事务,
-    // 从而验证 "Prisma 参数校验 + 数据库约束" 两层都通过, 又不留任何数据。
-    // 此前诊断只跑过 count(), 从未真正 upsert 过评分点, 这是定位盲区 ——
-    // 就是它抓到了 "Argument `category` is missing" 的真实根因。
-    try {
-      const probe = await prisma.selfAssessmentItem.findFirst({
-        where: { year: 2026 }, select: { itemCode: true }
-      });
-      if (probe) {
-        await prisma.$transaction(async (tx) => {
-          // 只读校验字段: actual=null 本就是该行当前值, 即使漏回滚也无副作用
-          await tx.selfAssessmentItem.update({
-            where: { id: (await tx.selfAssessmentItem.findUnique({
-              where: { itemCode: probe.itemCode }, select: { id: true }
-            })).id },
-            data: { actual: null }
-          });
-          throw new Error('__ROLLBACK_OK__');   // 主动回滚, 确保零写入
-        });
-        out.checks.itemUpsert = 'unexpected ok';
-      } else {
-        out.checks.itemUpsert = 'skip: 2026 年无数据';
-      }
-    } catch (e4) {
-      const msg = String(e4.message || e4);
-      if (msg.includes('__ROLLBACK_OK__')) {
-        out.checks.itemUpsert = 'OK (校验通过, 已回滚零写入)';
-      } else {
-        out.checks.itemUpsert = 'ERR: ' + String(e4.code || '') + ' ' + msg.substring(0, 500);
-      }
-    }
-  } catch (e) {
-    out.checks.error = String(e.message).substring(0, 800);
-  }
-  res.json(out);
+// ============================================================
+// 健康诊断端点 (只读, 无鉴权)
+//
+// 为什么保留: Render 免费层没有日志查询接口, 进程崩溃后拿不到容器日志,
+// 这是唯一能观测"服务是否崩过 / 迁移是否成功"的通道。
+//
+// 安全边界 (与早期版本的区别): 早期版本直接查 information_schema 和 pg_indexes,
+// 把全部表名、列名、索引定义暴露给任何访问者 —— 那属于信息泄露。
+// 现在只返回聚合状态, 不暴露任何表结构; 数据库连通性已由 /api/health 负责,
+// 这里只补两项 health 无法提供的信息:
+//   lastCrash      最近一次进程级异常 (定位用, 见下方 unhandledRejection 兜底)
+//   dbMigrationErr 启动期 db push / seed 失败原因
+// ============================================================
+app.get('/api/_diag', (req, res) => {
+  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '1' });
 });
 
 // ============================================================
 // 启动前自动迁移数据库
-// dbMigrationOk/dbMigrationErr: health 端点据此报告迁移状态
 // ============================================================
-let dbMigrationOk = false;
-let dbMigrationErr = '';
 
 // ============================================================
 // 启动流程: 先 app.listen 通过 Render health check, 再后台迁移
