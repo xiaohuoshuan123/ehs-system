@@ -86,13 +86,12 @@
             <div><b>考评类目：</b>{{ row.category }}</div>
             <div><b>考评项目：</b>{{ row.item || '—' }}</div>
             <div><b>考评办法：</b>{{ row.method || '—' }}</div>
-            <div><b>自评描述：</b>{{ row.assessmentDesc || '—' }}</div>
             <div v-if="!row.notApplicable"><b>扣分说明：</b>{{ row.deductionReason || '—' }}</div>
             <div v-else><b>不涉及原因：</b>{{ row.deductionReason || row.remark || '—' }}</div>
             <div v-if="row.deductionReason">
-              <b>整改措施：</b>{{ row.measure || '—' }}
+              <b>自评/评审描述：</b>{{ row.measure || '—' }}
               <span class="eb"><b>跟踪人：</b>{{ row.tracker || '—' }}</span>
-              <span class="eb"><b>整改：</b>{{ row.completed ? '已完成' : '未完成' }}</span>
+              <span class="eb"><b>整改：</b>{{ row.completed ? '已整改' : '未整改' }}</span>
             </div>
           </div>
         </template>
@@ -283,7 +282,7 @@ function mergeItems(rows) {
         cur.content = joinContent(cur, curBuf)
         out.push(cur)
       }
-      cur = { ...it }
+      cur = it
       curBuf = []
     } else {
       // 续行: 并入最近的父项 (后端已按原表行序返回, 续行一定紧跟父项)
