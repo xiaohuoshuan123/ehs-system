@@ -1853,7 +1853,7 @@ model EnvFactor {
 model SelfAssessmentItem {
   id              String   @id @default(cuid())
   orgId           String?  // 可空: 标准化自评是全厂层面的考评, 不限于单一组织
-  itemCode        String   @unique   // 考评内容唯一编码 (如 1.1.1 / 6.2.5 / 12.1.2-2)
+  itemCode        String             // 考评内容唯一编码 (如 1.1.1 / 6.2.5 / 12.1.2-2)
   year            Int              // 自评年度
   category        String           // 类目名称 (如 "九、危险源监控")
   categoryNo      Int              // 类目序号 1-13
@@ -1871,6 +1871,33 @@ model SelfAssessmentItem {
   completed       Boolean?         // 整改是否完成
   tracker         String   @default("") // 跟踪人
   remark          String   @default("")
+  assessorId      String?  // 自评人 User.id (从提交记录写入, 历史基线行为空)
+  assessorName    String?  // 自评人姓名 (从提交记录写入, 历史基线行为空)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@unique([year, itemCode])
+}
+
+// 15.1 标准化自评表提交记录 (一年一张, 由评分点汇总生成)
+// 打分方式: 总入口表格内联打分 -> 暂存/提交, 不逐项弹窗
+// 提交时固化得分与自评人/时间, submitted 状态可审批归档
+model SelfAssessment {
+  id              String    @id @default(cuid())
+  year            Int       @unique   // 自评年度 (每年一张)
+  orgId           String?
+  status          String    @default("draft")   // draft 暂存 / submitted 已提交 / approved 已审批归档
+  assessorId      String?   // 自评人 User.id
+  assessorName    String?   // 自评人姓名
+  createdAt       DateTime  @default(now())     // 自评时间 (草稿创建时间)
+  submittedAt     DateTime?                   // 提交时间
+  approvedById    String?
+  approvedByName  String?
+  approvedAt      DateTime?
+  itemTotal       Int       @default(0)        // 评分点数量
+  totalScore      Float     @default(0)        // 标准满分
+  excludedScore   Float     @default(0)        // 不涉及分值 (从分母排除)
+  actualScore     Float     @default(0)        // 实际得分
+  score           Float     @default(0)        // 标准化得分 = actualScore / (totalScore - excludedScore) * 100
+  note            String    @default("")       // 自评人说明 / 审批意见
 }

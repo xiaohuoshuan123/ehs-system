@@ -186,6 +186,8 @@ app.use('/api/hazard-evaluation', require('./routes/hazardEvaluation'));
 app.use('/api/env-factor', require('./routes/envFactor'));
 // ====== 十三、绩效评定 - 标准化自评打分 (13 类目/46 项目/1000 分制) ======
 app.use('/api/self-assessment-item', require('./routes/selfAssessmentItem'));
+// 标准化自评表提交记录 (自评人/时间/状态) + 评分点批量 upsert
+app.use('/api/self-assessment', require('./routes/selfAssessment'));
 // ====== 十四、环保管理 (14.1废水/14.2废气/14.3固废/14.4噪声/14.5土壤/14.6许可) ======
 app.use('/api/wastewater-emission', require('./routes/wastewaterEmission'));
 app.use('/api/exhaust-emission', require('./routes/exhaustEmission'));
