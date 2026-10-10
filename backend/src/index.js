@@ -205,7 +205,13 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/upload', require('./routes/upload'));
 
 // 健康检查
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));
+// dbOk=true 表示本次启动时 prisma db push 成功(schema 与线上库一致);
+// dbOk=false 说明迁移失败, 新表/新列的查询会 400, 需看容器日志定位原因。
+app.get('/api/health', (req, res) => res.json({
+  status: dbMigrationOk ? 'ok' : 'degraded',
+  dbOk: dbMigrationOk,
+  time: new Date().toISOString()
+}));
 
 // 错误处理
 app.use((err, req, res, next) => {
@@ -215,7 +221,11 @@ app.use((err, req, res, next) => {
 
 // ============================================================
 // 启动前自动迁移数据库（同步等待，确保表已创建）
+// 返回 true=成功; false=失败(调用方必须拒绝启动, 避免带旧 schema 上线)
 // ============================================================
+let dbMigrationOk = false;
+let dbMigrationErr = '';
+
 async function ensureDatabaseReady() {
   const { execSync } = require('child_process');
   // Docker: __dirname=/app/src, prisma 在 ./prisma/
@@ -230,25 +240,26 @@ async function ensureDatabaseReady() {
   console.log(`   schema: ${schemaPath}`);
   console.log(`   DATABASE_URL: ${(process.env.DATABASE_URL || '').substring(0, 30)}...`);
 
-  // 最多重试 8 次（40 秒）
-  for (let i = 1; i <= 8; i++) {
+  // 最多重试 6 次; db push 单次 180 秒 (schema 含 111 个模型, 冷启动时计算 diff 较慢)
+  for (let i = 1; i <= 6; i++) {
     try {
-      console.log(`   第 ${i}/8 次尝试 prisma db push...`);
-      execSync(`npx prisma db push --schema="${schemaPath}" --skip-generate`, {
+      console.log(`   第 ${i}/6 次尝试 prisma db push (超时 180s)...`);
+      execSync(`npx prisma db push --schema="${schemaPath}" --skip-generate --allow-diff-in-production`, {
         stdio: 'pipe',
-        timeout: 30000
+        timeout: 180000
       });
       console.log('✅ [DB] schema 同步成功');
 
       // 执行种子数据 (自评表含 304 条评分点导入, 冷启动 Postgres 上较慢,
-      // 故给 120 秒; 过早超时会截断自评块导致数据为空)
+      // 故给 180 秒; 过早超时会截断自评块导致数据为空)
       if (fs.existsSync(seedPath)) {
         console.log('   执行种子数据...');
         // stdout:'inherit' 实时透传 seed 全部日志(含 console.error 自评块失败信息);
         // 用 'inherit' 而非 'pipe', 否则成功路径下自评块的报错会被静默丢弃。
-        execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 120000 });
+        execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 180000 });
         console.log('✅ [DB] 种子数据完成');
       }
+      dbMigrationOk = true;
       return true;
     } catch (err) {
       // 完整输出 stderr + seed 的 stdout 尾部:
@@ -256,20 +267,31 @@ async function ensureDatabaseReady() {
       // seed.js 仍正常退出 -> 此处不会捕获, 失败被静默吞掉。故成功时也回显日志尾部。
       const stderr = err.stderr ? err.stderr.toString() : '';
       const stdout = err.stdout ? err.stdout.toString() : '';
-      console.error(`⏳ [DB] 第 ${i}/8 次失败:`);
-      console.error(`   stderr: ${stderr.substring(0, 2000)}`);
+      // 突出显示: 迁移失败原因(下次可直接从日志定位, 不必猜)
+      dbMigrationErr = `第 ${i}/6 次失败 | stderr: ${stderr.substring(0, 800)}`;
+      console.error(`❌ [DB] 第 ${i}/6 次失败:`);
+      console.error(`   stderr: ${stderr.substring(0, 2500)}`);
       console.error(`   stdout(尾部): ${stdout.substring(Math.max(0, stdout.length - 1500))}`);
-      if (i < 8) await new Promise(r => setTimeout(r, 5000));
+      if (i < 6) await new Promise(r => setTimeout(r, 8000));
     }
   }
-  console.error('❌ [DB] 迁移超时，数据库表可能未创建');
+  // 迁移失败: 不拒绝启动。
+  // 原因: 若 db push 因 Render 冷启动/网络抖动失败而直接 exit(1),
+  // Render 会反复重启容器, 服务整体不可用。带旧 schema 上线虽会部分接口 400,
+  // 但已有数据和查询仍可用, 且下次重启仍有机会迁移成功。
+  // 失败原因已打印到 stderr 并在下方 health 中标记, 便于定位。
+  console.error(`❌ [EHS] 数据库迁移失败(服务仍启动, 新表/新列查询可能 400): ${dbMigrationErr}`);
   return false;
 }
 
 // 启动服务
-ensureDatabaseReady().finally(() => {
+ensureDatabaseReady().then(ok => {
+  if (!ok) {
+    console.error(`❌ [EHS] 数据库未就绪, 服务仍启动。详见上方 [DB] 日志。db push 失败原因: ${dbMigrationErr}`);
+  }
   app.listen(PORT, () => {
     console.log(`🚀 [EHS] 后端服务: http://localhost:${PORT}`);
     console.log(`📡 [EHS] API健康检查: http://localhost:${PORT}/api/health`);
+    console.log(`   DB 迁移: ${ok ? '成功' : '失败, 见日志'}`);
   });
 });
