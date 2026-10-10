@@ -219,13 +219,31 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ code: err.status || 500, message: err.message });
 });
 
+// ---- 进程级兜底: 捕获异步 rejection / 未处理异常 ----
+// 关键背景: Express 4 不会捕获 async handler 的 rejected promise,
+// 而 Node 20 的 unhandledRejection 默认行为是 throw -> 进程直接退出,
+// 客户端表现为 502, 且服务需 Render 重启。这正是自评打分暂存接口
+// 曾经"一 POST 就 502、随后全服务不可用"的根因机制。
+// 加这两个 handler: 记录 + 不崩, 并暴露到 /api/_diag 便于定位根因。
+let lastCrash = '';
+process.on('unhandledRejection', (reason) => {
+  const msg = (reason && (reason.message || reason.code)) ?
+    `${reason.code || ''} ${reason.message || reason}` : String(reason);
+  lastCrash = `unhandledRejection @${new Date().toISOString()} | ${msg}`.substring(0, 1500);
+  console.error('⚠️ [CRASH-CAUGHT] unhandledRejection:', msg.substring(0, 600));
+});
+process.on('uncaughtException', (err) => {
+  lastCrash = `uncaughtException @${new Date().toISOString()} | ${err && err.message || String(err)}`.substring(0, 1500);
+  console.error('⚠️ [CRASH-CAUGHT] uncaughtException:', (err && err.message || String(err)).substring(0, 600));
+});
+
 // 数据库诊断端点: 用 raw Prisma 查询线上库真实状态
 // 用途: schema 变更不生效时, 无需本地 Postgres 复现即可定位
 //  (1) 哪张表/列已存在  (2) db push 的真实 stderr
 //   迁移状态: dbOk / dbMigrationErr
 app.get('/api/_diag', async (req, res) => {
   const { prisma } = require('./utils/common');
-  const out = { dbOk: dbMigrationOk, dbMigrationErr, checks: {} };
+  const out = { dbOk: dbMigrationOk, dbMigrationErr, lastCrash, checks: {} };
   try {
     // 直接查 information_schema, 不经 ORM, 反映数据库真实结构
     const q = async (sql) => await prisma.$queryRawUnsafe(sql);
@@ -258,6 +276,26 @@ app.get('/api/_diag', async (req, res) => {
       out.checks.itemWithAssessor = await prisma.selfAssessmentItem.count();
     } catch (e3) {
       out.checks.itemOrmErr = String(e3.message).substring(0, 300);
+    }
+    // ---- 关键探针: 真正执行 item upsert ----
+    // 之前诊断只跑过 count(), 从未真正 upsert 过评分点, 这是盲区。
+    // 线上 POST /self-assessment 一 POST 就崩, 精确定位点就在这里。
+    try {
+      const probe = await prisma.selfAssessmentItem.findFirst({
+        where: { year: 2026 }, select: { itemCode: true }
+      });
+      if (probe) {
+        await prisma.selfAssessmentItem.upsert({
+          where: { itemCode: probe.itemCode },
+          update: { actual: null },
+          create: { itemCode: probe.itemCode, year: 2026, category: '探针', categoryNo: 99, content: '探针', actual: null }
+        });
+        out.checks.itemUpsert = 'OK  (' + probe.itemCode + ')';
+      } else {
+        out.checks.itemUpsert = 'skip: 2026 年无数据';
+      }
+    } catch (e4) {
+      out.checks.itemUpsert = 'ERR: ' + String(e4.code || '') + ' ' + String(e4.message).substring(0, 500);
     }
   } catch (e) {
     out.checks.error = String(e.message).substring(0, 800);

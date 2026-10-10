@@ -100,6 +100,7 @@ router.post('/init', auth, async (req, res) => {
 // ===== 暂存 / 提交 =====
 // body: { year, items: [{id, itemCode, actual, notApplicable, ...}], submit: bool, note }
 router.post('/', auth, async (req, res) => {
+  try {
   const { year, items = [], submit = false, note = '' } = req.body || {};
   const y = parseInt(year);
   if (!y) return fail(res, 'year 必填', 400);
@@ -173,6 +174,12 @@ router.post('/', auth, async (req, res) => {
 
   return ok(res, { record: rec, summary: s, unscored: submit ? 0 : allItems.filter(it => it.score != null && !it.notApplicable && it.actual == null).length },
     submit ? '已提交' : '已暂存');
+  } catch (e) {
+    // 必须捕获: 否则未处理异常会让 Node 进程直接退出,
+    // 表现为客户端收到 502 且服务需要 Render 重启
+    console.error('   ❌ 暂存/提交失败:', e.message);
+    return fail(res, friendlyError(e));
+  }
 });
 
 // ===== 审批归档 (系统管理员) =====
