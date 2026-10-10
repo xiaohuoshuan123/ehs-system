@@ -238,16 +238,25 @@ async function ensureDatabaseReady() {
       });
       console.log('✅ [DB] schema 同步成功');
 
-      // 执行种子数据
+      // 执行种子数据 (自评表含 304 条评分点导入, 冷启动 Postgres 上较慢,
+      // 故给 120 秒; 过早超时会截断自评块导致数据为空)
       if (fs.existsSync(seedPath)) {
         console.log('   执行种子数据...');
-        execSync(`node "${seedPath}"`, { stdio: 'pipe', timeout: 30000 });
+        // stdout:'inherit' 实时透传 seed 全部日志(含 console.error 自评块失败信息);
+        // 用 'inherit' 而非 'pipe', 否则成功路径下自评块的报错会被静默丢弃。
+        execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 120000 });
         console.log('✅ [DB] 种子数据完成');
       }
       return true;
     } catch (err) {
-      const msg = err.stderr ? err.stderr.toString().substring(0, 200) : err.message;
-      console.error(`⏳ [DB] 第 ${i}/8 次失败: ${msg}`);
+      // 完整输出 stderr + seed 的 stdout 尾部:
+      // 自评表块的错误经 console.error 走 stderr, 但该块自带 try/catch 不抛错,
+      // seed.js 仍正常退出 -> 此处不会捕获, 失败被静默吞掉。故成功时也回显日志尾部。
+      const stderr = err.stderr ? err.stderr.toString() : '';
+      const stdout = err.stdout ? err.stdout.toString() : '';
+      console.error(`⏳ [DB] 第 ${i}/8 次失败:`);
+      console.error(`   stderr: ${stderr.substring(0, 2000)}`);
+      console.error(`   stdout(尾部): ${stdout.substring(Math.max(0, stdout.length - 1500))}`);
       if (i < 8) await new Promise(r => setTimeout(r, 5000));
     }
   }
