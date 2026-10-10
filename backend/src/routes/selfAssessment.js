@@ -26,15 +26,18 @@ function computeScore(items) {
 }
 
 // 按 25 条一批并行 upsert (updateMany 走 unnest 批量路径, 对类型严格;
-// 这里逐条 createMany-less 的 upsert 对类型宽容且错误显式抛出, 便于定位)
-async function upsertItems(year, rows, assessorId, assessorName) {
+// 这里逐条 upsert 对类型宽容且错误显式抛出, 便于定位)
+// 定位键用 itemCode (全局唯一)。历年自评复用同一套考评编码, 新年度用
+// "年份-" 前缀区分 (2019 年 "1.1.1" / 2026 年 "2026-1.1.1"), 故 itemCode
+// 仍保持全局唯一, 也避免了对已上线表删约束触发 db push 数据丢失警告。
+async function upsertItems(year, rows) {
   function* chunks(l, n) { for (let i = 0; i < l.length; i += n) yield l.slice(i, i + n); }
   for (const chunk of chunks(rows, 25)) {
     await Promise.all(chunk.map(r =>
       prisma.selfAssessmentItem.upsert({
-        where: { year_itemCode: { year, itemCode: r.itemCode } },
+        where: { itemCode: r.itemCode },
         create: { year, itemCode: r.itemCode, ...r.data },
-        update: { ...r.data, assessorId, assessorName }
+        update: { ...r.data }
       }).catch(e => {
         console.error(`   ⚠️  itemCode=${r.itemCode} 保存失败: ${String(e.message).split('\n')[0].substring(0, 200)}`);
         throw e;
@@ -84,7 +87,9 @@ router.post('/init', auth, async (req, res) => {
     year: y, category: b.category, categoryNo: b.categoryNo, item: b.item,
     itemNo: b.itemNo, contentNo: b.contentNo, content: b.content,
     score: b.score, method: b.method,
-    itemCode: b.itemCode   // 年度间复用同一考评编码, 唯一性由 @@unique([year, itemCode]) 保证
+    // itemCode 是全局唯一, 历年复用同一套考评编码会撞约束。
+    // 故新年度加 "年份-" 前缀 (2019 基线保持原样: "1.1.1", 2026 年: "2026-1.1.1")
+    itemCode: `${y}-${b.itemCode}`
   }));
   for (const chunk of chunks(rows, 25)) {
     await Promise.all(chunk.map(r => prisma.selfAssessmentItem.create({ data: r })));
@@ -117,7 +122,7 @@ router.post('/', auth, async (req, res) => {
           tracker: it.tracker || ''
         }
       }));
-    await upsertItems(y, rows, req.user.id, req.user.realName || req.user.username);
+    await upsertItems(y, rows);
   }
 
   // 2) 汇总该年度全部评分点
@@ -163,11 +168,8 @@ router.post('/', auth, async (req, res) => {
     }
   });
 
-  // 5) 固化自评人/时间到评分点行 (submitted 后行级可追溯)
-  await prisma.selfAssessmentItem.updateMany({
-    where: { year: y },
-    data: { assessorId: req.user.id, assessorName }
-  });
+  // 自评人/时间只固化在提交记录表 (SelfAssessment),
+  // 不落在评分点上 —— 评分点保持纯数据, 也避免了对已上线表的列迁移。
 
   return ok(res, { record: rec, summary: s, unscored: submit ? 0 : allItems.filter(it => it.score != null && !it.notApplicable && it.actual == null).length },
     submit ? '已提交' : '已暂存');

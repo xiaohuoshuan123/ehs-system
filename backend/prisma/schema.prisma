@@ -1853,7 +1853,10 @@ model EnvFactor {
 model SelfAssessmentItem {
   id              String   @id @default(cuid())
   orgId           String?  // 可空: 标准化自评是全厂层面的考评, 不限于单一组织
-  itemCode        String             // 考评内容唯一编码 (如 1.1.1 / 6.2.5 / 12.1.2-2)
+  itemCode        String   @unique  // 考评内容唯一编码; 历年自评复用同一套编码,
+                                    // 故新年度用 "年份-" 前缀区分 (如 2019 年为 "1.1.1",
+                                    // 2026 年为 "2026-1.1.1")。保持全局唯一索引不变,
+                                    // 避免对已上线表删约束触发 db push 数据丢失警告。
   year            Int              // 自评年度
   category        String           // 类目名称 (如 "九、危险源监控")
   categoryNo      Int              // 类目序号 1-13
@@ -1871,12 +1874,8 @@ model SelfAssessmentItem {
   completed       Boolean?         // 整改是否完成
   tracker         String   @default("") // 跟踪人
   remark          String   @default("")
-  assessorId      String?  // 自评人 User.id (从提交记录写入, 历史基线行为空)
-  assessorName    String?  // 自评人姓名 (从提交记录写入, 历史基线行为空)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-
-  @@unique([year, itemCode])
 }
 
 // 15.1 标准化自评表提交记录 (一年一张, 由评分点汇总生成)

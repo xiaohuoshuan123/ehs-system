@@ -277,12 +277,17 @@ async function migrateDB() {
   console.log(`   schema: ${schemaPath}`);
   console.log(`   DATABASE_URL: ${(process.env.DATABASE_URL || '').substring(0, 30)}...`);
 
-  // 最多重试 6 次; db push 单次 120 秒 (--allow-diff-in-production:
-  // NODE_ENV=production 下 Prisma 默认拒绝 DDL, 必须显式允许)
+  // 最多重试 6 次; db push 单次 120 秒
+  // 注意: db push 只支持 --schema/--skip-generate/--accept-data-loss/--force-reset,
+  // 没有 --allow-diff-in-production (那是 migrate 系参数)。此前误加该参数导致
+  // prisma 直接报 "unknown or unexpected option" 退出, 迁移 6 次全部失败。
+  // 不加 --accept-data-loss: 本次改动含删除全局唯一索引(改复合唯一),
+  // Prisma 会警告但不丢数据, 让它跳过 DDL 变更比 --force-reset 安全
+  // (--force-reset 会清空 SelfAssessmentItem 的 304 条历史评分点)。
   for (let i = 1; i <= 6; i++) {
     try {
       console.log(`   第 ${i}/6 次尝试 prisma db push (超时 120s)...`);
-      execSync(`npx prisma db push --schema="${schemaPath}" --skip-generate --allow-diff-in-production`, {
+      execSync(`npx prisma db push --schema="${schemaPath}" --skip-generate`, {
         stdio: 'pipe',
         timeout: 120000
       });
