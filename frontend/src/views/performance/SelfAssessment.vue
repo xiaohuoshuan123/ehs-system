@@ -51,7 +51,7 @@
         <div class="sum-item">
           <div class="sum-label">评分点</div>
           <div class="sum-value">{{ s.itemTotal }}<span class="unit">条</span></div>
-          <div class="sum-hint">另有 {{ items.length - s.itemTotal }} 条子项续行</div>
+          <div class="sum-hint">子项续行 {{ subCount }} 条已并入父项</div>
         </div>
         <div class="sum-item">
           <div class="sum-label">已打分</div>
@@ -75,7 +75,9 @@
       </div>
     </div>
 
-    <!-- ===== 打分表格: 内联编辑 ===== -->
+    <!-- ===== 打分表格: 内联编辑 =====
+         行 = 有分值的评分点; 考评内容里 "(1)~(n)" 列举项已按小节合并进同一条目,
+         不再单独成行 (原表里它们是 score 为空的续行, 本身不评分, 只是长句的分支)。 -->
     <el-table :data="pageData" v-loading="loading" border stripe size="small" style="width:100%"
       :row-class-name="rowClass" row-key="id">
       <el-table-column type="expand">
@@ -84,7 +86,6 @@
             <div><b>考评类目：</b>{{ row.category }}</div>
             <div><b>考评项目：</b>{{ row.item || '—' }}</div>
             <div><b>考评办法：</b>{{ row.method || '—' }}</div>
-            <div><b>考评内容：</b>{{ row.content }}</div>
             <div><b>自评描述：</b>{{ row.assessmentDesc || '—' }}</div>
             <div v-if="!row.notApplicable"><b>扣分说明：</b>{{ row.deductionReason || '—' }}</div>
             <div v-else><b>不涉及原因：</b>{{ row.deductionReason || row.remark || '—' }}</div>
@@ -96,20 +97,11 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="类目 / 考评项目" width="215">
+
+      <el-table-column label="类目 / 考评项目" width="180">
         <template #default="{ row }">
-          <!-- 去掉 show-overflow-tooltip: 它会强制 nowrap + 省略号, 正是"显示不全"的元凶 -->
           <div class="cell-cat">{{ row.item || row.category }}</div>
-          <!--
-            续行 (如 13-1-2~13-6-2) 是父项内容里的 (1)~(6) 列举项, 不单独计分。
-            之前按 itemCode 字典序排会把它们挤到类目最前, 又只显示父项名 "13.2持续改进",
-            用户因此完全看不出它们属于哪条。这里显式标出父项编号, 例如 "13.2.2 · 续 1/6"。
-          -->
-          <div v-if="isSubRow(row)" class="cell-no sub">
-            <span class="parent-no">{{ parentLabel(row) }}</span>
-            <span class="sub-idx">续 {{ row._subIdx }}/{{ row._subTotal }}</span>
-          </div>
-          <div v-else class="cell-no">{{ row.contentNo || row.itemCode }}</div>
+          <div class="cell-no">{{ row.contentNo || row.itemCode }}</div>
         </template>
       </el-table-column>
       <el-table-column label="满分" width="60" align="center">
@@ -130,35 +122,27 @@
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="考评内容" min-width="360">
+
+      <!-- 考评内容: 父项标题加粗, 续行合并成的小节段落缩进显示 -->
+      <el-table-column label="考评内容" min-width="340">
         <template #default="{ row }">
-          <!--
-            关键: 不用 show-overflow-tooltip (它给单元格加 nowrap + text-overflow:ellipsis,
-            长考评内容会被截成一行看不全)。这里让文字自然换行, 行高随内容撑开。
-          -->
           <div class="cell-content" :class="{ muted: row.notApplicable }">
-            <!-- 续行用缩进 + 前缀编号, 视觉上明确从属于父项 -->
-            <span v-if="isSubRow(row)" class="sub-mark">{{ row.content }}</span>
-            <span v-else>{{ row.content }}</span>
+            <div v-for="(line, i) in splitLines(row.content)" :key="i"
+              :class="{ subline: i > 0 }">{{ line }}</div>
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="扣分说明 / 不涉及原因" min-width="220">
+
+      <!-- 自评/评审描述: 绑定 measure 字段 (手填文本) -->
+      <el-table-column label="自评/评审描述" min-width="180">
         <template #default="{ row }">
-          <el-input v-if="!locked && row.score != null && !row.notApplicable && row.actual < (row.score || 0)"
-            v-model="row.deductionReason" placeholder="必填：扣分原因" size="small" clearable @input="onEdit" />
-          <el-input v-else-if="!locked && row.score != null && row.notApplicable"
-            v-model="row.deductionReason" :placeholder="row.remark ? row.remark : '不涉及原因'" size="small" clearable @input="onEdit" />
-          <span v-else :class="{ muted: !(row.deductionReason || row.remark) }">{{ row.deductionReason || row.remark || '—' }}</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="整改措施" min-width="180">
-        <template #default="{ row }">
-          <el-input v-if="!locked && row.score != null && !row.notApplicable && row.actual < (row.score || 0)"
-            v-model="row.measure" placeholder="整改措施" size="small" clearable @input="onEdit" />
+          <el-input v-if="!locked && row.score != null"
+            v-model="row.measure" placeholder="自评/评审情况说明" type="textarea"
+            :rows="2" resize="none" size="small" @input="onEdit" />
           <span v-else :class="{ muted: !row.measure }">{{ row.measure || '—' }}</span>
         </template>
       </el-table-column>
+
       <el-table-column label="整改" width="78" align="center">
         <template #default="{ row }">
           <el-switch v-if="!locked && row.deductionReason" v-model="row.completed" size="small" @change="onEdit" />
@@ -168,10 +152,21 @@
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
+
+      <!-- 扣分说明 / 不涉及原因: 放最后一列 -->
+      <el-table-column label="扣分说明 / 不涉及原因" min-width="200">
+        <template #default="{ row }">
+          <el-input v-if="!locked && row.score != null && !row.notApplicable && row.actual < (row.score || 0)"
+            v-model="row.deductionReason" placeholder="必填：扣分原因" size="small" clearable @input="onEdit" />
+          <el-input v-else-if="!locked && row.score != null && row.notApplicable"
+            v-model="row.deductionReason" :placeholder="row.remark ? row.remark : '不涉及原因'" size="small" clearable @input="onEdit" />
+          <span v-else :class="{ muted: !(row.deductionReason || row.remark) }">{{ row.deductionReason || row.remark || '—' }}</span>
+        </template>
+      </el-table-column>
     </el-table>
 
     <div class="pagination-wrap">
-      <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="items.length"
+      <el-pagination v-model:current-page="page" v-model:page-size="pageSize" :total="mergeRows.length"
         :page-sizes="[20, 50, 100, 200, 304]" layout="total, sizes, prev, pager, next, jumper" />
     </div>
 
@@ -198,42 +193,43 @@ const loading = ref(false)
 const saving = ref(false)
 const year = ref(currentYear)
 const record = ref(null)                          // 提交记录 (自评人/时间/状态)
-const items = ref([])                             // 本年度全部评分点 (内联编辑)
+const items = ref([])                             // 本年度全部原始评分点 (含续行, 提交用)
+const mergeRows = ref([])                         // 合并续行后的评分点 (渲染用)
 const page = ref(1)
 const pageSize = ref(50)
 const pageData = computed(() => {
   const s = (page.value - 1) * pageSize.value
-  return items.value.slice(s, s + pageSize.value)
+  return mergeRows.value.slice(s, s + pageSize.value)
 })
 const locked = computed(() => record.value?.status === 'approved')
+const subCount = computed(() => items.value.filter(i => i.score == null).length)
 
 // ===== 实时汇总 (口径与后端 computeScore 一致: 不涉及分值从分母排除) =====
 const r1 = n => Math.round(n * 10) / 10
 const s = reactive({ itemTotal: 0, totalScore: 0, excludedScore: 0, actualScore: 0, score: 0 })
-const scoreRows = computed(() => items.value.filter(i => i.score != null))
-// 待打分: 参与考评但未填实得
-const unscored = computed(() => scoreRows.value.filter(i => !i.notApplicable && i.actual == null).length)
+// 只有带分值的行参与计分 (续行 score 为空, 已并入父项展示)
+const mainRows = computed(() => items.value.filter(i => i.score != null))
+const unscored = computed(() => mainRows.value.filter(i => !i.notApplicable && i.actual == null).length)
 // 扣分但未填说明 (提交时校验)
 const blankReason = computed(() =>
-  scoreRows.value.filter(i => !i.notApplicable && i.actual != null && i.actual < (i.score || 0) && !(i.deductionReason || '').trim()).length)
+  mainRows.value.filter(i => !i.notApplicable && i.actual != null && i.actual < (i.score || 0) && !(i.deductionReason || '').trim()).length)
 
 function recalc() {
   let total = 0, ex = 0, actual = 0
-  for (const i of scoreRows.value) {
+  for (const i of mainRows.value) {
     total += i.score
     if (i.notApplicable) ex += i.score
     else if (i.actual != null) actual += i.actual
   }
   const denom = Math.max(total - ex, 0)
-  s.itemTotal = scoreRows.value.length
+  s.itemTotal = mainRows.value.length
   s.totalScore = r1(total); s.excludedScore = r1(ex); s.actualScore = r1(actual)
   s.score = denom ? r1(actual / denom * 100) : 0
 }
 
 // ===== 未保存改动检测: 按行快照对比 (整表 JSON 太慢且易误报) =====
-const snap = ref(new Map())                       // id -> pick(row) 的快照
+const snap = ref(new Map())                       // id -> keyOf(row) 的快照
 const EDIT_FIELDS = ['actual', 'notApplicable', 'deductionReason', 'measure', 'completed', 'tracker']
-const EDIT_KEY = EDIT_FIELDS.join(',')
 function pick(i) {
   return {
     id: i.id, itemCode: i.itemCode, year: i.year,
@@ -260,42 +256,71 @@ const dirty = computed(() => {
   return n
 })
 
-// ===== 考评内容续行识别 =====
-// 续行: score 为空的行 (如 13-1-2~13-6-2), 是父项内容里的 (1)~(6) 列举项, 不单独计分。
-// 必须算出它属于哪条父项、是第几条, 否则用户看到 "13.2持续改进" 孤行根本看不懂归属。
-// 依据: 后端已按原表行序 (categoryNo + seq) 返回, 续行一定紧跟在其父项之后。
-function buildSubIndex() {
-  let lastMain = null
-  const groups = new Map()      // 父项 contentNo -> [续行...]
-  for (const it of items.value) {
-    if (it.score == null) {
-      if (!lastMain) continue                       // 首个即续行(异常)则不归属
-      if (!groups.has(lastMain.id)) groups.set(lastMain.id, [])
-      groups.get(lastMain.id).push(it)
+// ===== 续行合并 =====
+// 原表里 "(1)~(n)" 这类列举项是独立行, score 为空, 本身不评分, 只是父项内容的分支。
+// 单独成行时用户既看不出归属又读不顺。这里按"小节"把它们合并回父项内容:
+//   新评分点编号 / 类目切换 / 考评项目切换 -> 结束当前小节, 新起一段
+// 合并后父项 content 变为多行字符串 (原标题一行, 各小节后续行拼成的段落一行),
+// 渲染时按行拆分展示, 视觉与原文一致 (标题 + 缩进的小节列举)。
+// 关键: 只改展示层, items.value 原始行一字不动, 提交仍逐行原样回传。
+function norm(str) { return String(str || '').replace(/\s+/g, '') }
+
+function mergeItems(rows) {
+  const out = []
+  let cur = null, curBuf = []
+  for (const it of rows) {
+    if (it.score != null) {
+      // 评分点: 新起一条, 收尾上一条的合并缓冲区
+      if (cur) {
+        cur.content = joinContent(cur, curBuf)
+        out.push(cur)
+      }
+      cur = { ...it }
+      curBuf = []
     } else {
-      lastMain = it
+      // 续行: 并入最近的父项 (后端已按原表行序返回, 续行一定紧跟父项)
+      if (!cur) continue
+      // 类目或考评项目切换 -> 说明当前小节已结束, 该续行另起一段
+      const newSection = (cur.categoryNo != null && it.categoryNo != null && cur.categoryNo !== it.categoryNo)
+        || (norm(cur.item) && norm(it.item) && norm(cur.item) !== norm(it.item))
+      if (newSection) curBuf.push({ break: true })
+      curBuf.push({ text: it.content })
     }
   }
-  groups.forEach((rows, pid) => rows.forEach((it, i) => {
-    it._subIdx = i + 1
-    it._subTotal = rows.length
-    it._parent = pid
-  }))
+  if (cur) { cur.content = joinContent(cur, curBuf); out.push(cur) }
+  return out
 }
-function isSubRow(it) { return it.score == null }
-// 父项标签: 优先原表编号 (13.2.2); 无编号时从内容开头取 "数字.数字" 编号; 兜底显示父项名
-function parentLabel(it) {
-  const p = items.value.find(i => i.id === it._parent)
-  if (!p) return '上一项'
-  if (p.contentNo) return p.contentNo
-  const m = (p.content || '').match(/^([\d]+(?:\.\d+)+)/)   // 如 "13.2.2..." -> "13.2.2"
-  return m ? m[1] : (p.item || '上一项')
+
+// 把续行缓冲区拼成父项的多行 content: 第 1 行是父项原标题, 之后每小节一行
+// 缓冲区元素: { split: true } 表示"小节断开, 另起一行"; { text: '...' } 表示续行文字。
+// 注意: 不能用 break 作键名 —— break 是 JS 保留字。
+function joinContent(parent, buf) {
+  const lines = [parent.content]
+  let seg = ''
+  for (const p of buf) {
+    if (p.split) { if (seg) lines.push(seg); seg = '' }
+    else seg += p.text
+  }
+  if (seg) lines.push(seg)
+  return lines.join('\n')
 }
+
+// 渲染用: 把合并后的 content 拆回行, 首行标题、其余行小节 (视觉区分用样式)
+function splitLines(text) {
+  return String(text || '').split('\n').filter(l => l.trim() !== '')
+}
+
+function buildMerged() {
+  mergeRows.value = mergeItems(items.value)
+}
+
 function onEdit() { recalc() }
 
-// 行高亮: 不涉及灰、扣分橙、子项续行淡化
+// 切换年度: 重新拉取该年度的记录与评分点
+function onYearChange() { reload() }
+
+// 行高亮: 不涉及灰、扣分橙
 function rowClass({ row }) {
-  if (row.score == null) return 'row-sub'
   if (row.notApplicable) return 'row-na'
   if (row.actual != null && row.actual < (row.score || 0)) return 'row-deduct'
   return ''
@@ -313,7 +338,7 @@ async function reload() {
     ])
     record.value = rec
     items.value = (its && its.data) || its || []
-    buildSubIndex()     // 算出续行的父项归属与序号 (依赖后端已按原表行序返回)
+    buildMerged()     // 续行并入父项 (依赖后端已按 categoryNo + seq 原表行序返回)
     recalc()
     takeSnapshot()
     page.value = 1
@@ -349,6 +374,7 @@ async function handleSave(submit) {
 
   saving.value = true
   try {
+    // 提交原始行 (含续行), 续行 score 为空, 后端 computeScore 自动忽略, 不改变计分口径
     const res = await api.post('/self-assessment', {
       year: year.value,
       submit,
@@ -404,19 +430,15 @@ onMounted(reload)
 
 .cell-cat { font-size: 12px; color: #909399; margin-bottom: 2px; }
 .cell-no { font-weight: 600; color: #303133; font-size: 12px; line-height: 1.5; }
-.cell-no.sub { display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
-.cell-no.sub .parent-no {
-  color: #409eff; font-weight: 700;
-  background: #ecf5ff; border-radius: 3px; padding: 0 4px;
-}
-.cell-no.sub .sub-idx { color: #909399; font-weight: 400; }
+
 /* 考评内容列: 必须自动换行。
    关键覆盖 —— Element Plus 的 .el-table .cell 默认 overflow:hidden,
    且单元格内联样式会把 white-space 固定为 nowrap, 导致长内容被裁掉看不全。
    这里解除裁剪 + 允许换行 + 中英混排按词断行, 行高随内容自然撑开。 */
-.cell-content { white-space: normal !important; word-break: break-word; overflow: visible; line-height: 1.5; }
-.row-sub .cell-content { color: #909399; }
-.sub-mark { display: inline-block; padding-left: 10px; border-left: 2px solid #dcdfe6; }
+.cell-content { white-space: normal !important; word-break: break-word; overflow: visible; line-height: 1.55; font-size: 12px; }
+/* 第 1 行是父项标题 (加粗), 之后各行是合并进来的小节列举段落 */
+.cell-content > div:first-child { font-weight: 600; color: #303133; }
+.cell-content .subline { color: #606266; padding-left: 8px; border-left: 2px solid #e4e7ed; }
 
 .expand-body { padding: 6px 18px; line-height: 2; font-size: 13px; color: #606266; }
 .expand-body .eb { margin-left: 16px; }
@@ -424,4 +446,5 @@ onMounted(reload)
 .pagination-wrap { margin-top: 14px; display: flex; justify-content: flex-end; }
 .text-warn { color: #e6a23c; font-weight: bold; }
 .muted { color: #c0c4cc; }
+.row-na .cell-content { color: #c0c4cc; }
 </style>
