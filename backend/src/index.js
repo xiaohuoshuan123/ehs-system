@@ -244,6 +244,21 @@ app.get('/api/_diag', async (req, res) => {
     // 各年度评分点数
     out.checks.yearCounts = await q(
       "SELECT year, count(*)::int AS n FROM \"SelfAssessmentItem\" GROUP BY year ORDER BY year");
+    // ---- 下面两行用 ORM(非 raw SQL), 反映 Prisma client 的真实视角 ----
+    // 用于区分: "表真的不存在" vs "表存在但 Prisma client 不认识该模型"
+    out.checks.assessorModelInClient = !!prisma.selfAssessment;
+    try {
+      out.checks.assessorCount = await prisma.selfAssessment.count();
+      out.checks.assessorRows = (await prisma.selfAssessment.findMany(
+        { select: { year: true, status: true, itemTotal: true }, take: 5 })).length;
+    } catch (e2) {
+      out.checks.assessorOrmErr = String(e2.message).substring(0, 300);
+    }
+    try {
+      out.checks.itemWithAssessor = await prisma.selfAssessmentItem.count();
+    } catch (e3) {
+      out.checks.itemOrmErr = String(e3.message).substring(0, 300);
+    }
   } catch (e) {
     out.checks.error = String(e.message).substring(0, 800);
   }
