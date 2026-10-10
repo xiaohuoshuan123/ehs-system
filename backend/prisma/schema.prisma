@@ -1821,3 +1821,56 @@ model EnvPermit {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// ==================== 十四、环境管理 (GB/T 24001-2016) ====================
+
+// 15.1 环境因素识别与评价 (GB/T 24001-2016 条款 6.1.2 环境因素)
+// 与 RiskFactor(危险源) 区分: 危险源面向人身/财产损失风险, 环境因素面向环境影响
+model EnvFactor {
+  id          String   @id @default(cuid())
+  orgId       String?
+  factorName  String            // 环境因素名称
+  activity    String            // 涉及的活动/产品/服务
+  workUnit    String   @default("") // 所属作业单元
+  emissionType String   @default("waste_water") // waste_water/exhaust/solid_waste/noise/soil/energy/其他
+  impact      String            // 环境影响描述
+  grade       String   @default("general")     // major/general 重要环境因素/一般
+  measure     String   @default("")             // 应对措施
+  responsiblePerson String @default("")
+  reviewDate  DateTime?
+  remark      String   @default("")
+  status      String   @default("active")      // active/eliminated/under_review
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ==================== 十三、绩效评定 (标准化自评打分) ====================
+
+// 15.2 标准化自评评分点
+// 对标《有色金属压力加工企业安全生产标准化评定标准》13 类目/46 项目/239 条内容/1000 分制
+// 标准化得分 = 实际得分 ÷ (1000 - 不涉及项目分值) × 100
+// 数据来源: Arconic 标准化自评表(2019.8), 由 prisma/seed.js 幂等导入
+model SelfAssessmentItem {
+  id              String   @id @default(cuid())
+  orgId           String?  // 可空: 标准化自评是全厂层面的考评, 不限于单一组织
+  itemCode        String   @unique   // 考评内容唯一编码 (如 1.1.1 / 6.2.5 / 12.1.2-2)
+  year            Int              // 自评年度
+  category        String           // 类目名称 (如 "九、危险源监控")
+  categoryNo      Int              // 类目序号 1-13
+  item            String   @default("") // 考评项目名 (如 "9.1 辨识与评估")
+  itemNo          String   @default("") // 项目编号 (如 "9.1")
+  contentNo       String   @default("") // 原表考评内容编号
+  content         String           // 考评内容描述
+  score           Float?           // 标准分值 (子条/续行为空, 不单独计分)
+  method          String   @default("") // 考评办法 (扣分规则)
+  actual          Float?           // 实际得分
+  notApplicable   Boolean  @default(false) // 是否不涉及(不计入考评)
+  assessmentDesc  String   @default("") // 自评/评审描述 (企业实际执行情况说明)
+  deductionReason String   @default("") // 扣分说明
+  measure         String   @default("") // 后续整改措施
+  completed       Boolean?         // 整改是否完成
+  tracker         String   @default("") // 跟踪人
+  remark          String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

@@ -152,6 +152,7 @@ const menuGroups = [
   { title: '九、危险源和环境因素', icon: 'MapLocation', children: [
     { path: '/work-unit', title: '作业单元' }, { path: '/risk-control', title: '危险源识别' }, { path: '/risk-inspection-config', title: '风险排查项' }, { path: '/risk-inspection', title: '风险排查' },
     { path: '/risk-review', title: '危险源评审' }, { path: '/risk-change', title: '危险源变更' }, { path: '/risk-map', title: '危险源地图' },
+    { path: '/env-factor', title: '环境因素识别' },
   ]},
   { title: '十、职业健康', icon: 'FirstAidKit', children: [
     { path: '/occupational', title: '职业健康档案' }, { path: '/ppe', title: 'PPE物品' }, { path: '/ppe-issue', title: 'PPE发放' }, { path: '/dosimeter', title: '剂量计' },
@@ -166,10 +167,11 @@ const menuGroups = [
   ]},
   { title: '十三、绩效评定和持续改进', icon: 'TrendCharts', children: [
     { path: '/performance', title: '绩效评定' }, { path: '/improvement', title: '持续改进' }, { path: '/safety-kpi', title: '安全金字塔KPI' }, { path: '/performance-assessment', title: '绩效评价' },
+    { path: '/self-assessment', title: '标准化自评表' },
   ]},
-  { title: '十四、环境管理', icon: 'Tree', children: [
-    { path: '/wastewater-emission', title: '废水管理' }, { path: '/exhaust-emission', title: '废气管理' }, { path: '/solid-waste-record', title: '固废台账' },
-    { path: '/noise-monitoring', title: '噪声监测' }, { path: '/soil-monitoring', title: '土壤监测' }, { path: '/env-permit', title: '环保许可' },
+  { title: '十四、环境管理', icon: 'WindPower', children: [
+    { path: '/wastewater-emission', title: '废水管理', icon: 'Cloudy' }, { path: '/exhaust-emission', title: '废气管理', icon: 'Coin' }, { path: '/solid-waste-record', title: '固废台账', icon: 'Box' },
+    { path: '/noise-monitoring', title: '噪声监测', icon: 'Mute' }, { path: '/soil-monitoring', title: '土壤监测', icon: 'Grid' }, { path: '/env-permit', title: '环保许可', icon: 'Stamp' },
   ]},
   { title: '个人工作台', icon: 'Tickets', children: [
     { path: '/todo', title: '我的待办' }, { path: '/notification', title: '消息通知' },

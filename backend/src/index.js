@@ -182,6 +182,10 @@ app.use('/api/work-behavior', require('./routes/workBehavior'));
 
 // 隐患治理成效评估
 app.use('/api/hazard-evaluation', require('./routes/hazardEvaluation'));
+// 九、危险源和环境因素 - 环境因素识别 (GB/T 24001-2016 条款 6.1.2)
+app.use('/api/env-factor', require('./routes/envFactor'));
+// ====== 十三、绩效评定 - 标准化自评打分 (13 类目/46 项目/1000 分制) ======
+app.use('/api/self-assessment-item', require('./routes/selfAssessmentItem'));
 // ====== 十四、环保管理 (14.1废水/14.2废气/14.3固废/14.4噪声/14.5土壤/14.6许可) ======
 app.use('/api/wastewater-emission', require('./routes/wastewaterEmission'));
 app.use('/api/exhaust-emission', require('./routes/exhaustEmission'));

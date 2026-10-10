@@ -76,6 +76,7 @@ const routes = [
       { path: 'risk-change', component: () => import('../views/riskControl/RiskChange.vue'), meta: { title: '危险源变更', group: '危险源' } },
       { path: 'risk-inspection', component: () => import('../views/riskControl/RiskInspection.vue'), meta: { title: '风险排查', group: '危险源' } },
       { path: 'risk-map', component: () => import('../views/riskControl/RiskMap.vue'), meta: { title: '危险源地图', group: '危险源' } },
+      { path: 'env-factor', component: () => import('../views/riskControl/EnvFactor.vue'), meta: { title: '环境因素识别', group: '危险源' } },
 
       // 九、隐患治理（含新增：重大事故隐患、隐患排查检查、隐患治理评估）
       { path: 'hazard', component: () => import('../views/hazard/Hazard.vue'), meta: { title: '隐患排查', group: '隐患治理' } },
@@ -122,6 +123,7 @@ const routes = [
       { path: 'improvement', component: () => import('../views/performance/Improvement.vue'), meta: { title: '持续改进', group: '绩效改进' } },
       { path: 'safety-kpi', component: () => import('../views/performance/SafetyKpi.vue'), meta: { title: '安全金字塔KPI', group: '绩效改进' } },
       { path: 'performance-assessment', component: () => import('../views/performance/PerformanceAssessment.vue'), meta: { title: '绩效评价', group: '绩效改进' } },
+      { path: 'self-assessment', component: () => import('../views/performance/SelfAssessment.vue'), meta: { title: '标准化自评表', group: '绩效改进' } },
 
       // 系统管理
       { path: 'org', component: () => import('../views/system/Organization.vue'), meta: { title: '组织机构', group: '系统管理' } },

@@ -4,6 +4,13 @@ const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
+// 数组分块 (Prisma createMany 有批量上限)
+function chunks(arr, n) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+
 async function main() {
   console.log('🌱 初始化种子数据...');
 
@@ -164,6 +171,55 @@ async function main() {
 
   for (const p of params) {
     await prisma.systemParameter.create({ data: p });
+  }
+
+  // ====== 标准化自评表 (13 类目/46 项目/1000 分制) ======
+  // 幂等: 按 itemCode upsert, 重复执行不产生重复数据
+  // 数据来源: prisma/selfassessment_data.js (Arconic标准化自评表-2019.8.xlsx)
+  try {
+    const data = require('./selfassessment_data');
+    const exist = await prisma.selfAssessmentItem.count();
+    if (exist === 0) {
+      const rows = data.scores.map(s => {
+        // 不涉及项目 (actual=NA) 从评分点标记, 分值计入分母排除项
+        const ex = data.excluded.find(e => e.contentNo && e.contentNo === s.contentNo);
+        return {
+          itemCode: s.itemCode, year: data.year, category: s.category,
+          categoryNo: s.categoryNo, item: s.item, itemNo: s.itemNo,
+          contentNo: s.contentNo, content: s.content, score: s.score,
+          method: s.method, actual: s.actual,
+          notApplicable: !!(ex || s.notApplicable),
+          assessmentDesc: s.desc,
+          // 不涉及原因只写 remark，不与扣分明细的 deductionReason 混用
+          remark: ex ? ex.reason : '',
+        };
+      });
+      for (const chunk of chunks(rows, 100)) {
+        await prisma.selfAssessmentItem.createMany({ data: chunk });
+      }
+      // 扣分明细回填到对应评分点 (按 contentNo 匹配)
+      // 不涉及行与扣分行无交集，两者不会互相覆盖
+      for (const d of data.deductions) {
+        if (!d.contentNo) continue;
+        await prisma.selfAssessmentItem.updateMany({
+          where: { contentNo: d.contentNo, year: data.year },
+          data: {
+            deductionReason: d.reason,
+            measure: d.measure,
+            completed: d.done,
+            tracker: d.tracker,
+          }
+        });
+      }
+      console.log(`📋 标准化自评表导入: ${rows.length} 条评分点, ` +
+        `${data.deductions.length} 条扣分明细, ${data.excluded.length} 条不涉及项目`);
+      console.log(`   满分 ${data.totalScore}, 2019 实际得分 ${data.actualScore}, ` +
+        `标准化得分 ${(data.actualScore / (data.totalScore - data.excludedScore) * 100).toFixed(1)}`);
+    } else {
+      console.log(`⏭️  标准化自评表已存在 ${exist} 条, 跳过导入`);
+    }
+  } catch (e) {
+    console.error('⚠️  标准化自评表导入失败(不影响启动):', e.message);
   }
 
   console.log('✅ 种子数据初始化完成！');
