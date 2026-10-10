@@ -143,24 +143,32 @@
         </template>
       </el-table-column>
 
-      <el-table-column label="整改" width="78" align="center">
+      <!-- 扣分说明 / 不涉及原因: 放最后一列。
+           整改状态与跟踪人内联在下方 —— 它们只在"已扣分/不涉及"时才有意义,
+           独立成列的话整列几乎全是空值, 内联更紧凑也更贴近填写顺序。 -->
+      <el-table-column label="扣分说明 / 不涉及原因" min-width="230">
         <template #default="{ row }">
-          <el-switch v-if="!locked && row.deductionReason" v-model="row.completed" size="small" @change="onEdit" />
-          <el-tag v-else-if="row.deductionReason" :type="row.completed ? 'success' : 'warning'" size="small">
-            {{ row.completed ? '完成' : '未完成' }}
-          </el-tag>
-          <span v-else class="muted">—</span>
-        </template>
-      </el-table-column>
+          <div class="cell-reason">
+            <el-input v-if="!locked && row.score != null && !row.notApplicable && row.actual < (row.score || 0)"
+              v-model="row.deductionReason" placeholder="必填：扣分原因" size="small" clearable @input="onEdit" />
+            <el-input v-else-if="!locked && row.score != null && row.notApplicable"
+              v-model="row.deductionReason" :placeholder="row.remark ? row.remark : '不涉及原因'" size="small" clearable @input="onEdit" />
+            <span v-else :class="{ muted: !(row.deductionReason || row.remark) }">{{ row.deductionReason || row.remark || '—' }}</span>
 
-      <!-- 扣分说明 / 不涉及原因: 放最后一列 -->
-      <el-table-column label="扣分说明 / 不涉及原因" min-width="200">
-        <template #default="{ row }">
-          <el-input v-if="!locked && row.score != null && !row.notApplicable && row.actual < (row.score || 0)"
-            v-model="row.deductionReason" placeholder="必填：扣分原因" size="small" clearable @input="onEdit" />
-          <el-input v-else-if="!locked && row.score != null && row.notApplicable"
-            v-model="row.deductionReason" :placeholder="row.remark ? row.remark : '不涉及原因'" size="small" clearable @input="onEdit" />
-          <span v-else :class="{ muted: !(row.deductionReason || row.remark) }">{{ row.deductionReason || row.remark || '—' }}</span>
+            <!-- 只有已填扣分/不涉及原因的行才需要跟踪整改 -->
+            <div v-if="row.deductionReason" class="reason-extra">
+              <el-button v-if="!locked" size="small" :type="row.completed ? 'success' : 'warning'"
+                @click="row.completed = !row.completed; onEdit()">
+                {{ row.completed ? '已整改' : '未整改' }}
+              </el-button>
+              <el-tag v-else :type="row.completed ? 'success' : 'warning'" size="small">
+                {{ row.completed ? '已整改' : '未整改' }}
+              </el-tag>
+              <el-input v-if="!locked" v-model="row.tracker" placeholder="跟踪人" size="small"
+                style="width:86px" @input="onEdit" />
+              <span v-else-if="row.tracker" class="tracker">跟踪：{{ row.tracker }}</span>
+            </div>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -283,7 +291,7 @@ function mergeItems(rows) {
       // 类目或考评项目切换 -> 说明当前小节已结束, 该续行另起一段
       const newSection = (cur.categoryNo != null && it.categoryNo != null && cur.categoryNo !== it.categoryNo)
         || (norm(cur.item) && norm(it.item) && norm(cur.item) !== norm(it.item))
-      if (newSection) curBuf.push({ break: true })
+      if (newSection) curBuf.push({ split: true })
       curBuf.push({ text: it.content })
     }
   }
@@ -447,4 +455,11 @@ onMounted(reload)
 .text-warn { color: #e6a23c; font-weight: bold; }
 .muted { color: #c0c4cc; }
 .row-na .cell-content { color: #c0c4cc; }
+
+/* 扣分说明列: 原因输入框 + 下方整改状态/跟踪人 */
+.cell-reason .reason-extra {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-top: 4px; padding-left: 8px; border-left: 2px solid #e4e7ed;
+}
+.cell-reason .tracker { font-size: 12px; color: #909399; }
 </style>
