@@ -219,6 +219,37 @@ app.use((err, req, res, next) => {
   res.status(err.status || 500).json({ code: err.status || 500, message: err.message });
 });
 
+// 数据库诊断端点: 用 raw Prisma 查询线上库真实状态
+// 用途: schema 变更不生效时, 无需本地 Postgres 复现即可定位
+//  (1) 哪张表/列已存在  (2) db push 的真实 stderr
+//   迁移状态: dbOk / dbMigrationErr
+app.get('/api/_diag', async (req, res) => {
+  const { prisma } = require('./utils/common');
+  const out = { dbOk: dbMigrationOk, dbMigrationErr, checks: {} };
+  try {
+    // 直接查 information_schema, 不经 ORM, 反映数据库真实结构
+    const q = async (sql) => await prisma.$queryRawUnsafe(sql);
+    // 新表是否存在
+    out.checks.selfAssessmentTable = !!(await q(
+      "SELECT 1 FROM information_schema.tables WHERE table_name='SelfAssessment' LIMIT 1"));
+    // 新增列是否存在
+    out.checks.itemAssessorCols = await q(
+      "SELECT column_name FROM information_schema.columns WHERE table_name='SelfAssessmentItem' AND column_name IN ('assessorId','assessorName')");
+    // SelfAssessmentItem 全部列
+    out.checks.itemCols = (await q(
+      "SELECT column_name FROM information_schema.columns WHERE table_name='SelfAssessmentItem' ORDER BY ordinal_position")).map(r => r.column_name);
+    // 唯一约束/索引
+    out.checks.itemIndexes = await q(
+      "SELECT indexname, indexdef FROM pg_indexes WHERE tablename='SelfAssessmentItem'");
+    // 各年度评分点数
+    out.checks.yearCounts = await q(
+      "SELECT year, count(*)::int AS n FROM \"SelfAssessmentItem\" GROUP BY year ORDER BY year");
+  } catch (e) {
+    out.checks.error = String(e.message).substring(0, 800);
+  }
+  res.json(out);
+});
+
 // ============================================================
 // 启动前自动迁移数据库
 // dbMigrationOk/dbMigrationErr: health 端点据此报告迁移状态
