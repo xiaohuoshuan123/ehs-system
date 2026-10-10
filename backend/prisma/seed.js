@@ -134,7 +134,10 @@ async function main() {
         const ex = data.excluded.find(e => e.contentNo && e.contentNo === s.contentNo);
         return {
           itemCode: s.itemCode, year: data.year, category: s.category,
-          categoryNo: s.categoryNo, item: s.item, itemNo: s.itemNo,
+          // itemNo 在 schema 是 String 类型, 但数据文件里是 number。
+          // createMany 走 unnest() 批量插入, 对 String 列传 number 会严格校验失败,
+          // 故显式转 String (create 单条会被 Prisma 容忍, createMany 不会)。
+          categoryNo: s.categoryNo, item: s.item, itemNo: String(s.itemNo ?? ''),
           contentNo: s.contentNo, content: s.content, score: s.score,
           method: s.method, actual: s.actual,
           notApplicable: !!(ex || s.notApplicable),
@@ -143,8 +146,20 @@ async function main() {
           remark: ex ? ex.reason : '',
         };
       });
-      for (const chunk of chunks(rows, 100)) {
-        await prisma.selfAssessmentItem.createMany({ data: chunk });
+      // 用 Promise.all 批量 create 而非 createMany:
+      // createMany 走 unnest() 批量路径, 类型不匹配时可能静默失败;
+      // create 对类型宽容且错误会显式抛出, 便于定位问题。
+      // 按 25 条一批并行, 304 条约需数秒, 远低于 120 秒超时。
+      const createRows = async (list) => {
+        await Promise.all(list.map(r =>
+          prisma.selfAssessmentItem.create({ data: r }).catch(e => {
+            console.error(`   ⚠️  itemCode=${r.itemCode} 插入失败: ${e.message.split('\n')[0].substring(0, 200)}`);
+            throw e;
+          })
+        ));
+      };
+      for (const chunk of chunks(rows, 25)) {
+        await createRows(chunk);
       }
       // 扣分明细回填到对应评分点 (按 contentNo 匹配)
       // 不涉及行与扣分行无交集，两者不会互相覆盖
