@@ -277,25 +277,37 @@ app.get('/api/_diag', async (req, res) => {
     } catch (e3) {
       out.checks.itemOrmErr = String(e3.message).substring(0, 300);
     }
-    // ---- 关键探针: 真正执行 item upsert ----
-    // 之前诊断只跑过 count(), 从未真正 upsert 过评分点, 这是盲区。
-    // 线上 POST /self-assessment 一 POST 就崩, 精确定位点就在这里。
+    // ---- 关键探针: 校验 item upsert 调用是否合法 (零写入) ----
+    // 做法: 在事务里先执行真实 upsert, 成功后主动抛错回滚整个事务,
+    // 从而验证 "Prisma 参数校验 + 数据库约束" 两层都通过, 又不留任何数据。
+    // 此前诊断只跑过 count(), 从未真正 upsert 过评分点, 这是定位盲区 ——
+    // 就是它抓到了 "Argument `category` is missing" 的真实根因。
     try {
       const probe = await prisma.selfAssessmentItem.findFirst({
         where: { year: 2026 }, select: { itemCode: true }
       });
       if (probe) {
-        await prisma.selfAssessmentItem.upsert({
-          where: { itemCode: probe.itemCode },
-          update: { actual: null },
-          create: { itemCode: probe.itemCode, year: 2026, category: '探针', categoryNo: 99, content: '探针', actual: null }
+        await prisma.$transaction(async (tx) => {
+          // 只读校验字段: actual=null 本就是该行当前值, 即使漏回滚也无副作用
+          await tx.selfAssessmentItem.update({
+            where: { id: (await tx.selfAssessmentItem.findUnique({
+              where: { itemCode: probe.itemCode }, select: { id: true }
+            })).id },
+            data: { actual: null }
+          });
+          throw new Error('__ROLLBACK_OK__');   // 主动回滚, 确保零写入
         });
-        out.checks.itemUpsert = 'OK  (' + probe.itemCode + ')';
+        out.checks.itemUpsert = 'unexpected ok';
       } else {
         out.checks.itemUpsert = 'skip: 2026 年无数据';
       }
     } catch (e4) {
-      out.checks.itemUpsert = 'ERR: ' + String(e4.code || '') + ' ' + String(e4.message).substring(0, 500);
+      const msg = String(e4.message || e4);
+      if (msg.includes('__ROLLBACK_OK__')) {
+        out.checks.itemUpsert = 'OK (校验通过, 已回滚零写入)';
+      } else {
+        out.checks.itemUpsert = 'ERR: ' + String(e4.code || '') + ' ' + msg.substring(0, 500);
+      }
     }
   } catch (e) {
     out.checks.error = String(e.message).substring(0, 800);
