@@ -169,6 +169,36 @@ function onlyKnownFields(m, modelName, d) {
   return out;
 }
 
+// 缓存模型名→{字段名: 标量类型}映射 (DMMF 启动后不变)
+// 用途: 查询参数全是字符串, Prisma 对 Int/Boolean 不接受字符串会直接抛错,
+//      需按 schema 真实类型转换 (String/enum 等保持原样)。
+const _fieldTypeCache = new Map();
+function fieldTypes(modelName) {
+  if (_fieldTypeCache.has(modelName)) return _fieldTypeCache.get(modelName);
+  const map = {};
+  try {
+    const md = Prisma.dmmf.datamodel.models.find(x => x.name === modelName);
+    if (md) md.fields.forEach(f => { map[f.name] = f.type; });
+  } catch {}
+  _fieldTypeCache.set(modelName, map);
+  return map;
+}
+
+// 按 Prisma 标量类型转换字符串值 (无法识别时原样返回)
+// NaN 防护: Prisma 收到 NaN 会抛错, 无法解析时回退原字符串保持原行为
+function coerceScalar(raw, type) {
+  if (type === 'Int') {
+    const n = parseInt(raw, 10);
+    return isNaN(n) ? raw : n;
+  }
+  if (type === 'Float') {
+    const n = parseFloat(raw);
+    return isNaN(n) ? raw : n;
+  }
+  if (type === 'Boolean') return ['1', 'true', 'yes'].includes(String(raw).toLowerCase());
+  return raw;
+}
+
 // ---- 通用CRUD生成器 ----
 // options: { filters: {field:'contains'...}, exact: ['field'...], include: [...] }
 function crud(modelName, opts = {}) {
@@ -215,7 +245,12 @@ function crud(modelName, opts = {}) {
           ? q[k].filter(Boolean)
           : String(q[k]).split(',').map(s => s.trim()).filter(Boolean);
         if (!vals.length) return;
-        where[k] = vals.length === 1 ? vals[0] : { in: vals };
+        // 按 schema 真实标量类型转换: query 参数全是字符串,
+        // Prisma 对 Int/Boolean 不接受字符串会直接抛错(400)。
+        // String/enum/DateTime 等保持原样, 避免误判。
+        const t = fieldTypes(modelName)[k];
+        const conv = v => (t ? coerceScalar(v, t) : v);
+        where[k] = vals.length === 1 ? conv(vals[0]) : { in: vals.map(conv) };
       });
       // 组织过滤
       if (q.orgId) where.orgId = q.orgId;

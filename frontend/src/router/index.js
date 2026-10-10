@@ -76,7 +76,6 @@ const routes = [
       { path: 'risk-change', component: () => import('../views/riskControl/RiskChange.vue'), meta: { title: '危险源变更', group: '危险源' } },
       { path: 'risk-inspection', component: () => import('../views/riskControl/RiskInspection.vue'), meta: { title: '风险排查', group: '危险源' } },
       { path: 'risk-map', component: () => import('../views/riskControl/RiskMap.vue'), meta: { title: '危险源地图', group: '危险源' } },
-      { path: 'env-factor', component: () => import('../views/riskControl/EnvFactor.vue'), meta: { title: '环境因素识别', group: '危险源' } },
 
       // 九、隐患治理（含新增：重大事故隐患、隐患排查检查、隐患治理评估）
       { path: 'hazard', component: () => import('../views/hazard/Hazard.vue'), meta: { title: '隐患排查', group: '隐患治理' } },
@@ -88,6 +87,7 @@ const routes = [
       { path: 'safety-inspection', component: () => import('../views/performance/SafetyInspection.vue'), meta: { title: '隐患排查检查', group: '隐患治理' } },
       { path: 'hazard-evaluation', component: () => import('../views/hazard/HazardEvaluation.vue'), meta: { title: '隐患治理评估', group: '隐患治理' } },
       // ====== 十四、环保管理 ======
+      { path: 'env-factor', component: () => import('../views/environment/EnvFactor.vue'), meta: { title: '环境因素识别', group: '环保管理' } },
       { path: 'wastewater-emission', component: () => import('../views/environment/WastewaterEmission.vue'), meta: { title: '废水管理', group: '环保管理' } },
       { path: 'exhaust-emission', component: () => import('../views/environment/ExhaustEmission.vue'), meta: { title: '废气管理', group: '环保管理' } },
       { path: 'solid-waste-record', component: () => import('../views/environment/SolidWasteRecord.vue'), meta: { title: '固废台账', group: '环保管理' } },
