@@ -199,6 +199,22 @@ function coerceScalar(raw, type) {
   return raw;
 }
 
+// 解析 orderBy 查询参数为 Prisma orderBy 数组。
+// 支持: "categoryNo,seq" / "seq:asc" / "year:desc,seq:asc" (方向可省, 默认 asc)
+// 只接受模型中真实存在的字段, 其余忽略, 避免 Prisma 抛 "Unknown argument"。
+function parseOrder(str, modelName) {
+  if (!str) return undefined;
+  const known = modelName ? fieldTypes(modelName) : null;
+  const out = [];
+  String(str).split(',').map(s => s.trim()).filter(Boolean).forEach(p => {
+    const [field, dir] = p.split(':');
+    const direction = (dir && /^(asc|desc)$/i.test(dir)) ? dir.toLowerCase() : 'asc';
+    if (known && !(field in known)) return;   // 字段不存在则跳过
+    out.push({ [field]: direction });
+  });
+  return out.length ? out : undefined;
+}
+
 // ---- 通用CRUD生成器 ----
 // options: { filters: {field:'contains'...}, exact: ['field'...], include: [...] }
 function crud(modelName, opts = {}) {
@@ -206,7 +222,7 @@ function crud(modelName, opts = {}) {
   const m = prisma[modelName];
   if (!m) return r;
 
-  const { filters = {}, exact = [], include } = opts;
+  const { filters = {}, exact = [], include, defaultOrderBy } = opts;
 
   r.post('/', auth, async (req, res) => {
     try {
@@ -258,9 +274,15 @@ function crud(modelName, opts = {}) {
 
       const s = (parseInt(page) - 1) * parseInt(pageSize);
       const t = parseInt(pageSize);
+      // 排序: 支持 defaultOrderBy (工厂级配置) 与 orderBy 查询参数覆盖。
+      // 注意: 原实现把 orderBy 解构出来后从未使用, 恒为 createdAt desc ——
+      // 评分点表因此按插入时间倒序返回, 类目与考评内容全乱。
+      const order = orderBy
+        ? parseOrder(orderBy, modelName)
+        : (defaultOrderBy || [{ createdAt: 'desc' }]);
       const [total, data] = await Promise.all([
         m.count({ where }),
-        m.findMany({ where, skip: s, take: t, orderBy: { createdAt: 'desc' }, include })
+        m.findMany({ where, skip: s, take: t, orderBy: order, include })
       ]);
       ok(res, { total, page: +page, pageSize: t, data });
     } catch (e) { fail(res, friendlyError(e)); }

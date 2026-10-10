@@ -96,10 +96,20 @@
           </div>
         </template>
       </el-table-column>
-      <el-table-column label="类目 / 考评内容" min-width="300" show-overflow-tooltip>
+      <el-table-column label="类目 / 考评项目" width="215">
         <template #default="{ row }">
+          <!-- 去掉 show-overflow-tooltip: 它会强制 nowrap + 省略号, 正是"显示不全"的元凶 -->
           <div class="cell-cat">{{ row.item || row.category }}</div>
-          <div class="cell-no">{{ row.contentNo || row.itemCode }}</div>
+          <!--
+            续行 (如 13-1-2~13-6-2) 是父项内容里的 (1)~(6) 列举项, 不单独计分。
+            之前按 itemCode 字典序排会把它们挤到类目最前, 又只显示父项名 "13.2持续改进",
+            用户因此完全看不出它们属于哪条。这里显式标出父项编号, 例如 "13.2.2 · 续 1/6"。
+          -->
+          <div v-if="isSubRow(row)" class="cell-no sub">
+            <span class="parent-no">{{ parentLabel(row) }}</span>
+            <span class="sub-idx">续 {{ row._subIdx }}/{{ row._subTotal }}</span>
+          </div>
+          <div v-else class="cell-no">{{ row.contentNo || row.itemCode }}</div>
         </template>
       </el-table-column>
       <el-table-column label="满分" width="60" align="center">
@@ -120,9 +130,17 @@
           <span v-else class="muted">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="考评内容" min-width="240" show-overflow-tooltip>
+      <el-table-column label="考评内容" min-width="360">
         <template #default="{ row }">
-          <span :class="{ muted: row.notApplicable }">{{ row.content }}</span>
+          <!--
+            关键: 不用 show-overflow-tooltip (它给单元格加 nowrap + text-overflow:ellipsis,
+            长考评内容会被截成一行看不全)。这里让文字自然换行, 行高随内容撑开。
+          -->
+          <div class="cell-content" :class="{ muted: row.notApplicable }">
+            <!-- 续行用缩进 + 前缀编号, 视觉上明确从属于父项 -->
+            <span v-if="isSubRow(row)" class="sub-mark">{{ row.content }}</span>
+            <span v-else>{{ row.content }}</span>
+          </div>
         </template>
       </el-table-column>
       <el-table-column label="扣分说明 / 不涉及原因" min-width="220">
@@ -242,6 +260,37 @@ const dirty = computed(() => {
   return n
 })
 
+// ===== 考评内容续行识别 =====
+// 续行: score 为空的行 (如 13-1-2~13-6-2), 是父项内容里的 (1)~(6) 列举项, 不单独计分。
+// 必须算出它属于哪条父项、是第几条, 否则用户看到 "13.2持续改进" 孤行根本看不懂归属。
+// 依据: 后端已按原表行序 (categoryNo + seq) 返回, 续行一定紧跟在其父项之后。
+function buildSubIndex() {
+  let lastMain = null
+  const groups = new Map()      // 父项 contentNo -> [续行...]
+  for (const it of items.value) {
+    if (it.score == null) {
+      if (!lastMain) continue                       // 首个即续行(异常)则不归属
+      if (!groups.has(lastMain.id)) groups.set(lastMain.id, [])
+      groups.get(lastMain.id).push(it)
+    } else {
+      lastMain = it
+    }
+  }
+  groups.forEach((rows, pid) => rows.forEach((it, i) => {
+    it._subIdx = i + 1
+    it._subTotal = rows.length
+    it._parent = pid
+  }))
+}
+function isSubRow(it) { return it.score == null }
+// 父项标签: 优先原表编号 (13.2.2); 无编号时从内容开头取 "数字.数字" 编号; 兜底显示父项名
+function parentLabel(it) {
+  const p = items.value.find(i => i.id === it._parent)
+  if (!p) return '上一项'
+  if (p.contentNo) return p.contentNo
+  const m = (p.content || '').match(/^([\d]+(?:\.\d+)+)/)   // 如 "13.2.2..." -> "13.2.2"
+  return m ? m[1] : (p.item || '上一项')
+}
 function onEdit() { recalc() }
 
 // 行高亮: 不涉及灰、扣分橙、子项续行淡化
@@ -264,6 +313,7 @@ async function reload() {
     ])
     record.value = rec
     items.value = (its && its.data) || its || []
+    buildSubIndex()     // 算出续行的父项归属与序号 (依赖后端已按原表行序返回)
     recalc()
     takeSnapshot()
     page.value = 1
@@ -353,7 +403,20 @@ onMounted(reload)
 .action-right { display: flex; gap: 8px; }
 
 .cell-cat { font-size: 12px; color: #909399; margin-bottom: 2px; }
-.cell-no { font-weight: 600; color: #303133; }
+.cell-no { font-weight: 600; color: #303133; font-size: 12px; line-height: 1.5; }
+.cell-no.sub { display: flex; gap: 4px; align-items: baseline; flex-wrap: wrap; }
+.cell-no.sub .parent-no {
+  color: #409eff; font-weight: 700;
+  background: #ecf5ff; border-radius: 3px; padding: 0 4px;
+}
+.cell-no.sub .sub-idx { color: #909399; font-weight: 400; }
+/* 考评内容列: 必须自动换行。
+   关键覆盖 —— Element Plus 的 .el-table .cell 默认 overflow:hidden,
+   且单元格内联样式会把 white-space 固定为 nowrap, 导致长内容被裁掉看不全。
+   这里解除裁剪 + 允许换行 + 中英混排按词断行, 行高随内容自然撑开。 */
+.cell-content { white-space: normal !important; word-break: break-word; overflow: visible; line-height: 1.5; }
+.row-sub .cell-content { color: #909399; }
+.sub-mark { display: inline-block; padding-left: 10px; border-left: 2px solid #dcdfe6; }
 
 .expand-body { padding: 6px 18px; line-height: 2; font-size: 13px; color: #606266; }
 .expand-body .eb { margin-left: 16px; }

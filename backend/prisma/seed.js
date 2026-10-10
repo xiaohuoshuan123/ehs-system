@@ -129,7 +129,7 @@ async function main() {
     const data = require('./selfassessment_data');
     const exist = await prisma.selfAssessmentItem.count({ where: { year: data.year } });
     if (exist === 0) {
-      const rows = data.scores.map(s => {
+      const rows = data.scores.map((s, idx) => {
         // 不涉及项目 (actual=NA) 从评分点标记, 分值计入分母排除项
         const ex = data.excluded.find(e => e.contentNo && e.contentNo === s.contentNo);
         return {
@@ -139,6 +139,9 @@ async function main() {
           // 故显式转 String (create 单条会被 Prisma 容忍, createMany 不会)。
           categoryNo: s.categoryNo, item: s.item, itemNo: String(s.itemNo ?? ''),
           contentNo: s.contentNo, content: s.content, score: s.score,
+          // idx = 原始 Excel 行序号, 续行(13-1-2 ~ 13-6-2)紧跟其父项 13.2.2,
+          // 保存该顺序即可按正确次序显示, 不受 itemCode 字典序干扰
+          seq: idx,
           method: s.method, actual: s.actual,
           notApplicable: !!(ex || s.notApplicable),
           assessmentDesc: s.desc,
@@ -182,6 +185,48 @@ async function main() {
     } else {
       console.log(`⏭️  ${data.year} 年标准化自评表已存在 ${exist} 条, 跳过导入`);
     }
+
+    // ---- 行序号回填 (幂等, 每次启动都会跑) ----
+    // seq 是后加的列: db push 给历史行填默认值 0, 而上面的导入块只在表为空时执行,
+    // 故已存在的 2019 基线与历年度行必须由这里补上原表行序号, 否则排序退化。
+    // 注意 itemCode 无前缀与有前缀两种形态:
+    //   - 2019 基线由 seed 直接插入, itemCode 是裸名 "13.1.1-2"
+    //   - 历年度由 /init 复制生成, 加了 "年份-" 前缀 "2026-13.1.1-2"
+    // 两种都要试。幂等: 只更新 seq=0 的行, seq>0 视为已确定永不覆盖 (可重入)。
+    const years = new Set([data.year]);
+    (await prisma.selfAssessmentItem.findMany({ select: { year: true } }))
+      .forEach(g => years.add(g.year));
+
+    // 回填: 事务内批量执行, 避免逐条 updateMany 造成数百次往返 (Render 冷启动会超时)
+    let fb = 0;
+    await prisma.$transaction(async (tx) => {
+      // 1) 一次查出所有待回填行 (seq=0)
+      const zero = await tx.selfAssessmentItem.findMany({
+        where: { year: { in: [...years] }, seq: 0 },
+        select: { id: true, itemCode: true, year: true }
+      });
+      // 2) 源表 itemCode -> 行序号 (源数组下标即原始 Excel 行号)
+      const srcSeq = new Map(data.scores.map((s, i) => [s.itemCode, i]));
+      // 3) 按 (year, seq) 分桶, 每桶一次 updateMany
+      const buckets = new Map();
+      for (const row of zero) {
+        const bare = row.itemCode.replace(/^\d{4}-/, '');   // 去掉 "年份-" 前缀
+        const seq = srcSeq.get(bare);
+        if (seq == null) continue;                          // 非考评模板行, 跳过
+        const key = `${row.year}:${seq}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(row.id);
+      }
+      for (const [key, ids] of buckets) {
+        const seq = parseInt(key.split(':')[1], 10);
+        const r = await tx.selfAssessmentItem.updateMany({
+          where: { id: { in: ids }, seq: 0 },
+          data: { seq }
+        });
+        fb += r.count;
+      }
+    });
+    console.log(fb > 0 ? `🔢 行序号回填: ${fb} 条` : `🔢 行序号已是最新, 无需回填`);
   } catch (e) {
     // 打印完整堆栈 (原实现只打印 e.message, 丢失了根因信息)
     console.error('⚠️  标准化自评表导入失败(不影响启动):', e.message);

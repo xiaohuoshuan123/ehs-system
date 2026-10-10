@@ -1864,6 +1864,14 @@ model SelfAssessmentItem {
   itemNo          String   @default("") // 项目编号 (如 "9.1")
   contentNo       String   @default("") // 原表考评内容编号
   content         String           // 考评内容描述
+  seq             Int      @default(0)  // 原表行序号 (类目内排序键)。
+                                        // 必须用它排序: 考评内容续行(如 "13-1-2"~"13-6-2"
+                                        // 是 "13.2.2 要明确下列事项" 的 (1)~(6) 列举项)
+                                        // 用连字符编号, ASCII 里 '-'(45) < '.'(46),
+                                        // 若按 itemCode 字典序排会把整组续行挤到类目最前,
+                                        // 导致"13.2持续改进"孤行且脱离其父项。
+                                        // 该字段只在新增列时由 db push 填充默认值 0,
+                                        // 历史行由回填脚本按原始 Excel 顺序写回。
   score           Float?           // 标准分值 (子条/续行为空, 不单独计分)
   method          String   @default("") // 考评办法 (扣分规则)
   actual          Float?           // 实际得分

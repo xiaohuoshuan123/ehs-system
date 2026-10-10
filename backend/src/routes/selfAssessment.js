@@ -67,7 +67,11 @@ router.get('/items', auth, async (req, res) => {
     const year = parseInt(req.query.year);
     const items = await prisma.selfAssessmentItem.findMany({
       where: { year },
-      orderBy: [{ categoryNo: 'asc' }, { itemCode: 'asc' }]
+      // seq = 原始 Excel 行序号, 是唯一的正确排序键。
+      // 不能按 itemCode 字典序: 续行用连字符编号('-' < '.'),
+      // 会把 "13.2.2 下列事项" 的 6 条列举项排到类目最前面。
+      // tiebreaker 取源表 itemCode (非年份前缀版), 仅作同一 seq 时的稳定次序。
+      orderBy: [{ categoryNo: 'asc' }, { seq: 'asc' }, { itemCode: 'asc' }]
     });
     return ok(res, items);
   } catch (e) { return fail(res, friendlyError(e)); }
@@ -89,10 +93,13 @@ router.post('/init', auth, async (req, res) => {
   if (!base.length) return fail(res, `${baseYear} 年基线数据不存在`, 400);
 
   function* chunks(l, n) { for (let i = 0; i < l.length; i += n) yield l.slice(i, i + n); }
-  const rows = base.map(b => ({
+  const rows = base.map((b, idx) => ({
     year: y, category: b.category, categoryNo: b.categoryNo, item: b.item,
     itemNo: b.itemNo, contentNo: b.contentNo, content: b.content,
     score: b.score, method: b.method,
+    // seq: 基线按 categoryNo+seq 有序取出, 故数组下标即原表行序号,
+    // 新年度完整继承同一行序 (续行仍紧跟其父项, 不被字典序打散)
+    seq: b.seq || idx,
     // itemCode 是全局唯一, 历年复用同一套考评编码会撞约束。
     // 故新年度加 "年份-" 前缀 (2019 基线保持原样: "1.1.1", 2026 年: "2026-1.1.1")
     itemCode: `${y}-${b.itemCode}`
