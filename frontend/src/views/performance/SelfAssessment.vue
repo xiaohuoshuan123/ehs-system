@@ -132,13 +132,15 @@
         </template>
       </el-table-column>
 
-      <!-- 自评/评审描述: 绑定 measure 字段 (手填文本) -->
-      <el-table-column label="自评/评审描述" min-width="180">
+      <!-- 自评/评审描述: 绑定 assessmentDesc (企业实际执行情况说明)。
+           注意: measure 是"后续整改措施", 属扣分后的整改跟踪, 不在这里填。
+           展开行里仍可查看整改措施全文。 -->
+      <el-table-column label="自评/评审描述" min-width="210">
         <template #default="{ row }">
           <el-input v-if="!locked && row.score != null"
-            v-model="row.measure" placeholder="自评/评审情况说明" type="textarea"
+            v-model="row.assessmentDesc" placeholder="自评/评审情况说明" type="textarea"
             :rows="2" resize="none" size="small" @input="onEdit" />
-          <span v-else :class="{ muted: !row.measure }">{{ row.measure || '—' }}</span>
+          <span v-else :class="{ muted: !row.assessmentDesc }">{{ row.assessmentDesc || '—' }}</span>
         </template>
       </el-table-column>
 
@@ -236,13 +238,15 @@ function recalc() {
 
 // ===== 未保存改动检测: 按行快照对比 (整表 JSON 太慢且易误报) =====
 const snap = ref(new Map())                       // id -> keyOf(row) 的快照
-const EDIT_FIELDS = ['actual', 'notApplicable', 'deductionReason', 'measure', 'completed', 'tracker']
+// assessmentDesc = 自评/评审描述(主填写项); measure = 后续整改措施(展开行查看, 不在主表编辑)
+const EDIT_FIELDS = ['actual', 'notApplicable', 'deductionReason', 'assessmentDesc', 'completed', 'tracker']
 function pick(i) {
   return {
     id: i.id, itemCode: i.itemCode, year: i.year,
     actual: i.notApplicable ? null : i.actual,
     notApplicable: !!i.notApplicable,
     deductionReason: i.deductionReason || '',
+    assessmentDesc: i.assessmentDesc || '',
     measure: i.measure || '',
     completed: i.completed ?? null,
     tracker: i.tracker || ''
