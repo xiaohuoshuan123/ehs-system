@@ -281,9 +281,9 @@ async function migrateDB() {
   // 注意: db push 只支持 --schema/--skip-generate/--accept-data-loss/--force-reset,
   // 没有 --allow-diff-in-production (那是 migrate 系参数)。此前误加该参数导致
   // prisma 直接报 "unknown or unexpected option" 退出, 迁移 6 次全部失败。
-  // 不加 --accept-data-loss: 本次改动含删除全局唯一索引(改复合唯一),
-  // Prisma 会警告但不丢数据, 让它跳过 DDL 变更比 --force-reset 安全
-  // (--force-reset 会清空 SelfAssessmentItem 的 304 条历史评分点)。
+  // 不加 --accept-data-loss / --force-reset: 本次 schema 只新增 SelfAssessment 表,
+  // 不改动已上线表的列和索引, db push 应为空操作, 无需任何数据丢失选项。
+  // --force-reset 会 DROP 全库重建, 必须避免(会清空 SelfAssessmentItem 的 304 条)。
   for (let i = 1; i <= 6; i++) {
     try {
       console.log(`   第 ${i}/6 次尝试 prisma db push (超时 120s)...`);
