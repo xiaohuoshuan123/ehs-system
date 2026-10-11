@@ -369,12 +369,19 @@ const rates = computed(() => {
 const perfRaw = computed(() => {
   const n = Number(perf.perfEmployees) || 0
   if (n <= 0) return null
+  // 必须带上算好的千分率: GRADES.test 读的是 injuryRate/odIncidence/deathRate
+  // (与后端 perfIndicators 的输出字段一致)。若只给原始量, test 里读到的
+  // undefined <= 1 恒为 false, 每档都不通过, 等级会被误判成"绩效降级至三级以下"。
+  const deathRate = Number(perf.perfDeaths || 0) / n * 1000
+  const injuryRate = Number(perf.perfSeriousInjuries || 0) / n * 1000
+  const odIncidence = Number(perf.perfOdCases || 0) / n * 1000
   return {
     employees: n, deaths: Number(perf.perfDeaths || 0),
     seriousInjuries: Number(perf.perfSeriousInjuries || 0),
     odCases: Number(perf.perfOdCases || 0),
     econLossMax: Number(perf.perfEconLossMax || 0),
-    majorOrAbove: !!perf.perfMajorAbove
+    majorOrAbove: !!perf.perfMajorAbove,
+    deathRate, injuryRate, odIncidence
   }
 })
 // 实时判定: 打分变化(recalc 改 s.score)或绩效输入变化都会触发重算
