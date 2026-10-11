@@ -61,6 +61,91 @@
       </div>
     </el-card>
 
+    <!-- ===== 安全绩效指标 (等级判定条件, 申请评审之日前一年内) ===== -->
+    <el-card shadow="never" class="perf-card">
+      <div class="perf-head">
+        <div class="perf-title">
+          <span class="head-title">安全绩效指标</span>
+          <el-tag size="small" type="warning">定级条件 · 前一年内</el-tag>
+          <span class="perf-tip">等级须「标准化得分」与「安全绩效」同时满足；千分率 = 例数 ÷ 职工人数 × 1000</span>
+        </div>
+        <div class="perf-grade">
+          <el-button v-if="!perfLocked && items.length" size="small" :loading="perfSaving" @click="savePerf">保存安全绩效</el-button>
+          <el-tag v-if="grade" :type="gradeType" size="large" effect="dark">
+            评定等级：{{ grade.level }}
+          </el-tag>
+        </div>
+      </div>
+
+      <el-row :gutter="14" class="perf-row">
+        <el-col :span="4">
+          <span class="pf-label">职工平均人数</span>
+          <el-input-number v-model="perf.perfEmployees" :min="0" :max="100000" :precision="0"
+            :disabled="perfLocked" size="small" controls-position="right" style="width:100%" />
+          <span class="pf-unit">人</span>
+        </el-col>
+        <el-col :span="3">
+          <span class="pf-label">死亡人数</span>
+          <el-input-number v-model="perf.perfDeaths" :min="0" :max="10000" :precision="0"
+            :disabled="perfLocked" size="small" controls-position="right" style="width:100%" />
+          <span class="pf-unit">人</span>
+        </el-col>
+        <el-col :span="3">
+          <span class="pf-label">重伤人数</span>
+          <el-input-number v-model="perf.perfSeriousInjuries" :min="0" :max="10000" :precision="0"
+            :disabled="perfLocked" size="small" controls-position="right" style="width:100%" />
+          <span class="pf-unit">人</span>
+        </el-col>
+        <el-col :span="4">
+          <span class="pf-label">职业病发病/新增</span>
+          <el-input-number v-model="perf.perfOdCases" :min="0" :max="10000" :precision="0"
+            :disabled="perfLocked" size="small" controls-position="right" style="width:100%" />
+          <span class="pf-unit">例</span>
+        </el-col>
+        <el-col :span="4">
+          <span class="pf-label">最大事故直接经济损失</span>
+          <el-input-number v-model="perf.perfEconLossMax" :min="0" :precision="2"
+            :disabled="perfLocked" size="small" controls-position="right" style="width:100%" />
+          <span class="pf-unit">万元</span>
+        </el-col>
+        <el-col :span="6">
+          <span class="pf-label">较大及以上事故</span>
+          <el-switch v-model="perf.perfMajorAbove" :disabled="perfLocked"
+            active-text="有" inactive-text="无" inline-prompt
+            style="--el-switch-on-color:#f56c6c" />
+          <span class="pf-label" style="margin-left:14px">核对人</span>
+          <el-input v-model="perf.perfChecker" :disabled="perfLocked" size="small"
+            placeholder="核对人" style="width:100px" />
+        </el-col>
+      </el-row>
+
+      <!-- 实时算出的千分率 + 各档判定 -->
+      <div class="perf-rates">
+        <div class="rate-box">
+          <span class="pf-label">千人死亡率</span>
+          <b>{{ rates.deathRate }}</b>‰
+          <span class="rate-lim">一级— · 二级≤0.1 · 三级≤0.3</span>
+        </div>
+        <div class="rate-box">
+          <span class="pf-label">千人重伤率</span>
+          <b>{{ rates.injuryRate }}</b>‰
+          <span class="rate-lim">一级≤1 · 二级≤3 · 三级≤5</span>
+        </div>
+        <div class="rate-box">
+          <span class="pf-label">职业病发病率</span>
+          <b>{{ rates.odIncidence }}</b>‰
+          <span class="rate-lim">一级0 · 二级≤1 · 三级≤2</span>
+        </div>
+        <div class="rate-box">
+          <span class="pf-label">经济损失</span>
+          <b>{{ perf.perfEconLossMax }}</b>万元
+          <span class="rate-lim">一级≤100 · 二级≤300 · 三级≤500</span>
+        </div>
+      </div>
+
+      <el-alert v-if="grade" :title="grade.reason" :type="gradeType" :closable="false" show-icon class="perf-alert" />
+    </el-card>
+
     <!-- ===== 操作条 ===== -->
     <div class="action-bar">
       <div class="action-left">
@@ -68,6 +153,7 @@
         <span v-else-if="items.length" class="dirty-tip saved">已全部保存</span>
       </div>
       <div class="action-right">
+        <el-button :icon="Download" :loading="exporting" @click="handleExport">导出年度自评报告</el-button>
         <el-button :icon="Refresh" @click="reload">刷新</el-button>
         <el-button v-if="isAdmin && record?.status === 'submitted'" type="success" :loading="saving" @click="handleApprove">审批归档</el-button>
         <el-button :loading="saving" @click="handleSave(false)">暂存</el-button>
@@ -189,9 +275,29 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
+import { Refresh, Download } from '@element-plus/icons-vue'
 import api from '../../api'
 import { useUserStore } from '../../stores/user'
+
+// 评定等级条件 —— 与后端 backend/src/utils/gradeJudge.js 严格一致。
+// 本地复刻的目的: 输入时即时刷新等级, 不必等后端往返。
+// 修改口径时必须两边同步, 这是最容易漏掉的坑。
+const GRADES = [
+  { level: '一级', min: 90, test: p => p.deaths === 0 && p.injuryRate <= 1 && p.econLossMax <= 100 && p.odIncidence === 0 },
+  { level: '二级', min: 75, test: p => p.deathRate <= 0.1 && p.injuryRate <= 3 && p.econLossMax <= 300 && p.odIncidence <= 1 },
+  { level: '三级', min: 60, test: p => p.deathRate <= 0.3 && p.majorOrAbove === false && p.injuryRate <= 5 && p.econLossMax <= 500 && p.odIncidence <= 2 }
+]
+// GRADES 按门槛降序, 不达某档门槛只跳过本档(continue), 低门槛档仍要检查。
+function judgeLevel(score, perf) {
+  const byScore = GRADES.find(g => score >= g.min)
+  if (!byScore) return { level: '未达三级', reason: `标准化得分 ${score} 分，未达三级要求（≥60 分）`, perfFilled: false }
+  if (!perf) return { level: `得分对应${byScore.level}`, reason: `标准化得分达${byScore.level}门槛；安全绩效未填报，等级须核对安全绩效后确认`, perfFilled: false }
+  for (const g of GRADES) {
+    if (score < g.min) continue
+    if (g.test(perf)) return { level: g.level, reason: `标准化得分 ${score} 分（达${byScore.level}门槛），安全绩效满足${g.level}全部条件`, perfFilled: true }
+  }
+  return { level: '绩效降级至三级以下', reason: `标准化得分 ${score} 分（达${byScore.level}门槛），但安全绩效不满足任何一档条件；等级须得分与绩效同时满足，需整改后重新自评`, perfFilled: true }
+}
 
 const user = useUserStore()
 const BASELINE_YEAR = 2019                       // 历史基线年度 (Arconic 2019.8 自评表)
@@ -234,6 +340,68 @@ function recalc() {
   s.itemTotal = mainRows.value.length
   s.totalScore = r1(total); s.excludedScore = r1(ex); s.actualScore = r1(actual)
   s.score = denom ? r1(actual / denom * 100) : 0
+}
+
+// ===== 安全绩效 (等级判定条件, 申请评审之日前一年内) =====
+// 独立于打分保存: 这些指标常先于打分填报, 走单独端点不被"未打分"校验拦住。
+const perfSaving = ref(false)
+const perf = reactive({
+  perfEmployees: 0, perfDeaths: 0, perfSeriousInjuries: 0,
+  perfMajorAbove: false, perfEconLossMax: 0, perfOdCases: 0,
+  perfChecker: '', perfCheckDate: null
+})
+// 锁定条件: 归档后普通用户不可改, 但管理员仍需补填安全绩效(它是定级前提,
+// 实际填报常晚于打分); 审批归档只应锁住打分结果本身。
+const isAdmin = computed(() => user.userInfo?.username === 'admin')
+const perfLocked = computed(() => record.value?.status === 'approved' && !isAdmin)
+
+const r2 = n => Math.round(n * 100) / 100
+// 千分率: 职工人数为 0 时不能除零, 视为未填报
+const rates = computed(() => {
+  const n = Number(perf.perfEmployees) || 0
+  if (n <= 0) return { deathRate: '—', injuryRate: '—', odIncidence: '—' }
+  return {
+    deathRate: r2(Number(perf.perfDeaths || 0) / n * 1000),
+    injuryRate: r2(Number(perf.perfSeriousInjuries || 0) / n * 1000),
+    odIncidence: r2(Number(perf.perfOdCases || 0) / n * 1000)
+  }
+})
+const perfRaw = computed(() => {
+  const n = Number(perf.perfEmployees) || 0
+  if (n <= 0) return null
+  return {
+    employees: n, deaths: Number(perf.perfDeaths || 0),
+    seriousInjuries: Number(perf.perfSeriousInjuries || 0),
+    odCases: Number(perf.perfOdCases || 0),
+    econLossMax: Number(perf.perfEconLossMax || 0),
+    majorOrAbove: !!perf.perfMajorAbove
+  }
+})
+// 实时判定: 打分变化(recalc 改 s.score)或绩效输入变化都会触发重算
+const grade = computed(() => judgeLevel(s.score, perfRaw.value))
+const gradeType = computed(() => {
+  const g = grade.value.level
+  if (g === '一级') return 'success'
+  if (g === '二级') return 'primary'
+  if (g === '三级') return 'warning'
+  return 'info'
+})
+
+async function loadPerf() {
+  const data = await api.get(`/self-assessment/${year.value}/performance`)
+  if (!data) return
+  for (const k of ['perfEmployees', 'perfDeaths', 'perfSeriousInjuries', 'perfMajorAbove', 'perfEconLossMax', 'perfOdCases', 'perfChecker', 'perfCheckDate']) {
+    perf[k] = data[k] ?? perf[k]
+  }
+}
+
+async function savePerf() {
+  if (perfLocked.value) return ElMessage.warning('已归档的自评表不可修改')
+  perfSaving.value = true
+  try {
+    await api.put(`/self-assessment/${year.value}/performance`, { ...perf })
+    ElMessage.success('安全绩效已保存')
+  } catch (e) { } finally { perfSaving.value = false }
 }
 
 // ===== 未保存改动检测: 按行快照对比 (整表 JSON 太慢且易误报) =====
@@ -343,9 +511,10 @@ const fmt = t => t ? new Date(t).toLocaleString('zh-CN', { hour12: false }) : '�
 async function reload() {
   loading.value = true
   try {
-    const [rec, its] = await Promise.all([
+    const [rec, its, perfData] = await Promise.all([
       api.get('/self-assessment', { params: { year: year.value } }),
-      api.get('/self-assessment-item', { params: { year: year.value, pageSize: 400 } })
+      api.get('/self-assessment-item', { params: { year: year.value, pageSize: 400 } }),
+      api.get(`/self-assessment/${year.value}/performance`).catch(() => null)
     ])
     record.value = rec
     items.value = (its && its.data) || its || []
@@ -353,12 +522,44 @@ async function reload() {
     recalc()
     takeSnapshot()
     page.value = 1
+    if (perfData) await loadPerf()
     // 年度下拉: 当前年 + 有数据的年度
     const ys = new Set([currentYear])
     items.value.forEach(i => ys.add(i.year))
     if (rec && rec.year) ys.add(rec.year)
     yearOptions.value = [...ys].sort((a, b) => b - a)
   } catch (e) { } finally { loading.value = false }
+}
+
+// ===== 导出年度自评报告 (xlsx) =====
+// 用原生 fetch 而非 axios: axios 拦截器会对响应做 JSON 解包(读 res.data.code),
+// 对 Blob 会直接抛错, 且 Blob 拿不到 Content-Disposition 的文件名。
+const exporting = ref(false)
+async function handleExport() {
+  if (!items.value.length) return ElMessage.warning('该年度尚未初始化评分点')
+  exporting.value = true
+  const a = document.createElement('a')
+  try {
+    const token = localStorage.getItem('ehs_token')
+    const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/self-assessment/export?year=${year.value}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '')
+      throw new Error(txt || `导出失败 (HTTP ${res.status})`)
+    }
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    a.href = url
+    a.download = `永杰集团${year.value}年度安全生产标准化自评报告.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    ElMessage.success('已导出年度自评报告')
+  } catch (e) {
+    ElMessage.error(e.message || '导出失败，请确认安全绩效已保存后重试')
+  } finally { exporting.value = false }
 }
 
 // ===== 初始化年度自评表 (从基线复制考评模板) =====
@@ -398,8 +599,15 @@ async function handleSave(submit) {
 }
 
 // ===== 审批归档 (管理员) =====
-const isAdmin = computed(() => user.userInfo?.username === 'admin')
 async function handleApprove() {
+  // 归档后普通用户不能再改安全绩效, 归档前提醒一次
+  if (!perfRaw.value) {
+    try {
+      await ElMessageBox.confirm(
+        '安全绩效指标尚未填报。归档后普通用户不可再改（管理员仍可补填）。等级须「标准化得分」与「安全绩效」同时满足。',
+        '归档前提醒', { type: 'warning', confirmButtonText: '仍要归档', cancelButtonText: '先填安全绩效' })
+    } catch { return }
+  }
   try {
     const { value } = await ElMessageBox.prompt('审批意见（可选）', '审批归档', {
       confirmButtonText: '归档', cancelButtonText: '取消', inputPlaceholder: '同意，符合自评要求'
@@ -432,6 +640,23 @@ onMounted(reload)
 .sum-value.warn { color: #e6a23c; }
 .sum-value .unit { font-size: 12px; font-weight: normal; color: #909399; margin-left: 2px; }
 .sum-hint { font-size: 11px; color: #c0c4cc; margin-top: 2px; }
+
+/* 安全绩效卡 */
+.perf-card { margin-bottom: 14px; }
+.perf-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.perf-title { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.perf-tip { font-size: 12px; color: #909399; }
+.perf-grade { display: flex; align-items: center; gap: 10px; }
+.perf-row { margin-bottom: 12px; }
+.perf-row .el-col { margin-bottom: 8px; }
+.pf-label { display: block; font-size: 12px; color: #909399; margin-bottom: 4px; }
+.pf-unit { font-size: 11px; color: #c0c4cc; margin-left: 4px; }
+.perf-rates { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.rate-box { background: #f7f9fb; border: 1px solid #ebeef5; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 6px; flex: 1; min-width: 190px; }
+.rate-box .pf-label { margin: 0; white-space: nowrap; }
+.rate-box b { font-size: 15px; color: #303133; }
+.rate-lim { font-size: 11px; color: #c0c4cc; margin-left: auto; }
+.perf-alert { margin-bottom: 0; }
 
 .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
 .action-left { font-size: 13px; }

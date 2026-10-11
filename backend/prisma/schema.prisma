@@ -1906,5 +1906,15 @@ model SelfAssessment {
   excludedScore   Float     @default(0)        // 不涉及分值 (从分母排除)
   actualScore     Float     @default(0)        // 实际得分
   score           Float     @default(0)        // 标准化得分 = actualScore / (totalScore - excludedScore) * 100
+  // ---- 安全绩效指标 (申请评审之日前一年内, 自评人依据事故/职业病/经济损失台账填报) ----
+  // 标准无系统内数据源, 故落库为独立字段; 千人死亡率/千人重伤率/职业病发病率由前端实时计算, 不落库。
+  perfEmployees      Int     @default(0)   // 职工平均人数
+  perfDeaths         Int     @default(0)   // 死亡人数
+  perfSeriousInjuries Int     @default(0) // 重伤人数 (千人重伤率分子)
+  perfMajorAbove     Boolean @default(false) // 是否发生较大及以上生产安全事故
+  perfEconLossMax    Float   @default(0)   // 最大一次事故直接经济损失 (万元)
+  perfOdCases        Int     @default(0)   // 职业病发病/新增例数
+  perfChecker        String  @default("")  // 安全绩效核对人
+  perfCheckDate      DateTime?             // 安全绩效核对日期
   note            String    @default("")       // 自评人说明 / 审批意见
 }
