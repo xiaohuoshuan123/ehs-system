@@ -3,7 +3,32 @@
 const { prisma, auth, ok, fail, friendlyError } = require('../utils/common');
 const { GRADES, judgeLevel, perfIndicators } = require('../utils/gradeJudge');
 const express = require('express');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { applyWrap: applyXlsxWrapOnce } = require('../utils/xlsxWrap');
 const router = express.Router();
+
+// 报告样式后处理: 给「自评明细/扣分清单」的长文本列加自动换行 + 顶端对齐。
+// SheetJS 社区版不写单元格样式 (styles.xml 的 cellXfs 恒为 1 个), 不处理的话
+// 考评内容里的换行符在 Excel 里会显示成一个空格, 整条列举项挤成一坨。
+// 纯 Node 实现(xlsxWrap.js), 无 python 依赖; 失败不阻塞导出 —— 内容完整才是底线。
+function applyXlsxWrap(buf) {
+  let out = buf;
+  try {
+    // [sheetIdx, 表头行数, 0基列号]: 自评明细的考评内容/描述/扣分说明/整改, 扣分清单的对应列
+    for (const [sheetIdx, headerRows, cols] of [[2, 1, [4, 8, 9, 10]], [3, 1, [4, 8, 9]]]) {
+      const r = applyXlsxWrapOnce(out, sheetIdx, headerRows, cols);
+      if (!r) { console.warn(`   ⚠ 报告样式后处理 sheet${sheetIdx} 失败, 用原 buffer`); return buf; }
+      out = r;
+    }
+  } catch (e) {
+    console.warn('   ⚠ 报告样式后处理失败(不影响导出):', e.message);
+    out = buf;
+  }
+  return out;
+}
 
 const ASSESS_FIELDS = ['actual', 'notApplicable', 'assessmentDesc', 'deductionReason', 'measure', 'completed', 'tracker'];
 
@@ -251,18 +276,6 @@ router.get('/export', auth, async (req, res) => {
   const merged = mergeItems(items);
   const s = computeScore(items);
 
-  // 给整列单元格加自动换行 (aoa_to_sheet 不认 s 属性, 需逐格写).
-  // skipHead 是跳过的表头行数 —— 封面式表格的表头不是单行, 要跳过。
-  function wrapCol(ws, col, skipHead) {
-    const ref = ws['!ref'];
-    if (!ref) return;
-    const last = XLSX.utils.decode_range(ref).e.r;
-    for (let r = skipHead; r <= last; r++) {
-      const key = XLSX.utils.encode_cell({ r, c: col });
-      if (ws[key]) ws[key].s = { alignment: { wrapText: true, vertical: 'top' } };
-    }
-  }
-
   // 各类目汇总: 类目名取该类目首行 (同一 categoryNo 只有一条类目名)
   const catMap = new Map();
   for (const it of items) {
@@ -372,8 +385,6 @@ router.get('/export', auth, async (req, res) => {
   const w3 = XLSX.utils.aoa_to_sheet(aoa3);
   w3['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 18 }, { wch: 10 }, { wch: 56 }, { wch: 8 },
     { wch: 6 }, { wch: 8 }, { wch: 52 }, { wch: 34 }, { wch: 34 }, { wch: 9 }, { wch: 10 }];
-  // 考评内容/描述/扣分说明含换行 (列举项已逐条分行), 必须开自动换行否则 Excel 里显示成空格
-  for (const col of [4, 8, 9, 10]) wrapCol(w3, col, 2);
 
   // --- 表4 扣分与整改清单 (仅扣分/不涉及项) ---
   const flagged = merged.filter(it => it.deductionReason || it.measure);
@@ -422,7 +433,7 @@ router.get('/export', auth, async (req, res) => {
   XLSX.utils.book_append_sheet(wb, w3, '自评明细');
   XLSX.utils.book_append_sheet(wb, w4, '扣分与整改清单');
   XLSX.utils.book_append_sheet(wb, w5, '评定等级判定标准');
-  const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' });
+  const buf = applyXlsxWrap(XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }));
 
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="self-assessment-report-${year}.xlsx"`);
