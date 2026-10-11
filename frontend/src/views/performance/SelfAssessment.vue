@@ -482,20 +482,47 @@ function mergeItems(rows) {
 // 把续行缓冲区拼成父项的多行 content: 第 1 行是父项原标题, 之后每小节一行
 // 缓冲区元素: { split: true } 表示"小节断开, 另起一行"; { text: '...' } 表示续行文字。
 // 注意: 不能用 break 作键名 —— break 是 JS 保留字。
+// 续行本身以列举序号 (1)/(１)/① 开头时, 独立成段 —— 原表里 "(1)组织建立...;(2)组织制定..."
+// 这类列举项在库里常存成一条一条的续行, 不拆的话会被拼成一整段挤在一起。
+const ENUM_HEAD = /^[（(]\s*\d+\s*[)）]|[①-⑩]/
+
 function joinContent(parent, buf) {
   const lines = [parent.content]
   let seg = ''
   for (const p of buf) {
     if (p.split) { if (seg) lines.push(seg); seg = '' }
-    else seg += p.text
+    else {
+      const s = p.text || ''
+      if (seg && ENUM_HEAD.test(s.trim())) { lines.push(seg); seg = '' }
+      seg += s
+    }
   }
   if (seg) lines.push(seg)
   return lines.join('\n')
 }
 
-// 渲染用: 把合并后的 content 拆回行, 首行标题、其余行小节 (视觉区分用样式)
+// 渲染用: 把 content 拆成行数组。
+// 换行符之外, 同行内出现多个列举序号时也要逐条拆行 (如 3.1.3 把 5 项存在同一条续行里)。
+// 只认括号序号 (1)/(２) 与圈号 ①: 中文数字序 (三、) 在"三级以上应满足""第三十一条"里太常见会误切;
+// 序号后紧跟汉字的 (如 "（国务院2011（591）号令）") 也不算列举项。
 function splitLines(text) {
-  return String(text || '').split('\n').filter(l => l.trim() !== '')
+  const res = []
+  for (const raw of String(text || '').split('\n')) {
+    const t = raw.trim()
+    if (!t) continue
+    const marks = []
+    const re = /[（(]\s*\d+\s*[)）]|[①-⑩]/g
+    let m
+    while ((m = re.exec(t)) !== null) {
+      const after = t.slice(m.index + m[0].length).replace(/^\s+/, '')
+      if (after && !/[\u4e00-\u9fa5]/.test(after)) marks.push(m.index)
+    }
+    // 行首的编号属于父项标题 (如 "1.1.1建立..."), 不作切点
+    let from = 0
+    for (const c of marks.filter(i => i > 0)) { res.push(t.slice(from, c)); from = c }
+    if (from < t.length) res.push(t.slice(from))
+  }
+  return res
 }
 
 function buildMerged() {

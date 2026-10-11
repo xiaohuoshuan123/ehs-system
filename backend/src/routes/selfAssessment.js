@@ -227,7 +227,10 @@ router.get('/export', auth, async (req, res) => {
   ]);
   if (!items.length) return fail(res, `${year} 年自评表尚未初始化`, 400);
 
-  // 续行并入父项 (与前端 mergeItems 同口径，仅用于报告展示，不影响计分)
+  // 续行并入父项 (仅用于报告展示, 不影响计分)。
+  // 每条续行本身作为独立一行 —— 原表里 "(1)组织建立...;(2)组织制定..." 的列举项在库里
+  // 就是一条一条的续行, 直接按行输出即天然是分行, 不要在这里做二次切分 (会把
+  // "（7）其他与安全生产直接相关的物品或者活动。制定职业危害防治..." 这类同段续写的文字切碎)。
   function mergeItems(rows) {
     const out = []; let cur = null, buf = [];
     for (const it of rows) {
@@ -247,6 +250,18 @@ router.get('/export', auth, async (req, res) => {
   }
   const merged = mergeItems(items);
   const s = computeScore(items);
+
+  // 给整列单元格加自动换行 (aoa_to_sheet 不认 s 属性, 需逐格写).
+  // skipHead 是跳过的表头行数 —— 封面式表格的表头不是单行, 要跳过。
+  function wrapCol(ws, col, skipHead) {
+    const ref = ws['!ref'];
+    if (!ref) return;
+    const last = XLSX.utils.decode_range(ref).e.r;
+    for (let r = skipHead; r <= last; r++) {
+      const key = XLSX.utils.encode_cell({ r, c: col });
+      if (ws[key]) ws[key].s = { alignment: { wrapText: true, vertical: 'top' } };
+    }
+  }
 
   // 各类目汇总: 类目名取该类目首行 (同一 categoryNo 只有一条类目名)
   const catMap = new Map();
@@ -357,6 +372,8 @@ router.get('/export', auth, async (req, res) => {
   const w3 = XLSX.utils.aoa_to_sheet(aoa3);
   w3['!cols'] = [{ wch: 6 }, { wch: 20 }, { wch: 18 }, { wch: 10 }, { wch: 56 }, { wch: 8 },
     { wch: 6 }, { wch: 8 }, { wch: 52 }, { wch: 34 }, { wch: 34 }, { wch: 9 }, { wch: 10 }];
+  // 考评内容/描述/扣分说明含换行 (列举项已逐条分行), 必须开自动换行否则 Excel 里显示成空格
+  for (const col of [4, 8, 9, 10]) wrapCol(w3, col, 2);
 
   // --- 表4 扣分与整改清单 (仅扣分/不涉及项) ---
   const flagged = merged.filter(it => it.deductionReason || it.measure);
