@@ -261,13 +261,10 @@ router.get('/export', auth, async (req, res) => {
   const cats = [...catMap.entries()].sort((a, b) => a[0] - b[0])
     .map(([no, c]) => ({ no, ...c }));
 
-  // 单位名: 从组织表取，取不到用通用名 (报告封面用)
+  // 单位名: 标准化评定按工厂级，主体固定为"永杰集团昆山工厂"（与系统名一致）。
+  // 目前 admin 账号 orgId 指向集团层(永杰集团)，若按组织链取会得到不完整的名字；
+  // 待将来有多家工厂、各厂独立自评时，再改为按 orgId 解析到工厂级节点。
   let orgName = '永杰集团昆山工厂';
-  const orgId = req.user && req.user.orgId;
-  if (orgId) {
-    const o = await prisma.organization.findUnique({ where: { id: orgId } }).catch(() => null);
-    if (o && o.name) orgName = o.name;
-  }
 
   const now = new Date();
   const statusLabel = { draft: '暂存', submitted: '已提交', approved: '已审批归档' }[record?.status] || '未提交';
@@ -377,17 +374,29 @@ router.get('/export', auth, async (req, res) => {
     { wch: 6 }, { wch: 6 }, { wch: 40 }, { wch: 34 }, { wch: 9 }, { wch: 10 }];
 
   // --- 表5 评定等级判定标准 (逐字引用标准条件; 本企情况取填报的安全绩效) ---
+  const r2x = n => Math.round(n * 100) / 100
+  const rateStr = n => (r2x(n)) + ' ‰'
   const aoa5 = [['评定等级', '标准化得分要求', '安全绩效条件（申请评审之日前一年内）', '本企实际', '达标', '核对人 / 日期']];
-  const rateStr = n => (Math.round(n * 100) / 100) + ' ‰';
+  // 达标列 = 本档「得分门槛」与「安全绩效条件」是否同时满足(逐档独立判定)
+  const scoreOk = g => s.score >= g.min
+  const perfOk = (g, p) => p && g.test({ ...p, majorOrAbove: !!p.majorOrAbove })
   for (const g of GRADES) {
     const actual = perf
       ? `得分 ${s.score} 分；千人死亡率 ${rateStr(perf.deathRate)}；千人重伤率 ${rateStr(perf.injuryRate)}；较大以上事故 ${perf.majorOrAbove ? '有' : '无'}；最大经济损失 ${perf.econLossMax} 万元；职业病发病率 ${rateStr(perf.odIncidence)}`
       : '（未填报）';
-    aoa5.push([g.level, `≥ ${g.min} 分`, g.cond, actual, perf ? '' : '—', '—']);
+    // 注意: 此处只标"本档条件是否满足", 不等于"评定为该级"。
+    // 实际等级 = 最高满足档(见封面"自评意见"), 二级/三级在一级成立时同样满足其条件。
+    let pass = ''
+    if (!perf) pass = '待核对'
+    else if (scoreOk(g) && perfOk(g, perf)) pass = '条件满足'
+    else if (scoreOk(g)) pass = '安全绩效不满足'
+    else pass = '得分不达门槛'
+    const checkBy = perf ? `${record?.perfChecker || '—'} / ${record?.perfCheckDate ? fmtTime(record.perfCheckDate).slice(0, 10) : '—'}` : '—'
+    aoa5.push([g.level, `≥ ${g.min} 分`, g.cond, actual, pass, checkBy])
   }
   aoa5.push(['结论', '', '等级须同时满足「标准化得分达线」且「安全绩效条件」，二者缺一不可', judged.level, '', '—']);
   const w5 = XLSX.utils.aoa_to_sheet(aoa5);
-  w5['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 62 }, { wch: 54 }, { wch: 8 }, { wch: 16 }];
+  w5['!cols'] = [{ wch: 10 }, { wch: 16 }, { wch: 62 }, { wch: 50 }, { wch: 16 }, { wch: 18 }];
   w5['!merges'] = [{ s: { r: aoa5.length - 1, c: 0 }, e: { r: aoa5.length - 1, c: 1 } }];
 
   const wb = XLSX.utils.book_new();
