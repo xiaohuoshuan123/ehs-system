@@ -134,7 +134,8 @@ const routes = [
       { path: 'todo', component: () => import('../views/profile/Todo.vue'), meta: { title: '我的待办', group: '个人工作台' } },
       { path: 'notification', component: () => import('../views/profile/Notification.vue'), meta: { title: '消息通知', group: '个人工作台' } },
     ]
-  }
+  },
+  { path: '/:pathMatch(.*)*', redirect: '/dashboard' }
 ]
 
 const router = createRouter({ history: createWebHashHistory(), routes })
