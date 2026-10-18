@@ -256,7 +256,7 @@ process.on('uncaughtException', (err) => {
 //   dbMigrationErr 启动期 db push / seed 失败原因
 // ============================================================
 app.get('/api/_diag', (req, res) => {
-  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '3' });
+  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '4' });
 });
 
 // ============================================================
@@ -308,8 +308,11 @@ async function migrateDB() {
       execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 180000 });
       console.log('✅ [DB] 种子数据完成');
     } catch (e) {
-      dbMigrationErr = `种子数据执行失败: ${e.message.substring(0, 800)}`;
+      const stderr = e.stderr ? e.stderr.toString() : '';
+      const stdout = e.stdout ? e.stdout.toString() : '';
+      dbMigrationErr = `种子数据执行失败: ${e.message.substring(0, 400)} | stderr: ${stderr.substring(0, 800)}`;
       console.error(`⚠️ [DB] 种子数据执行失败 (不影响服务运行): ${dbMigrationErr}`);
+      if (stdout) console.error(`   stdout尾部: ${stdout.substring(Math.max(0, stdout.length-1000))}`);
     }
   } else {
     console.log('⚠️ [DB] seed.js 不存在, 跳过');
