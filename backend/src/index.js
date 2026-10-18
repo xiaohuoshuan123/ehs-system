@@ -256,7 +256,7 @@ process.on('uncaughtException', (err) => {
 //   dbMigrationErr 启动期 db push / seed 失败原因
 // ============================================================
 app.get('/api/_diag', (req, res) => {
-  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '1' });
+  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '2' });
 });
 
 // ============================================================
