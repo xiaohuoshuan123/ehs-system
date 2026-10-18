@@ -356,13 +356,13 @@ async function main() {
     orgId, permitNo: 'WP-2026-001', workType: 'hot_work',
     title: '精炼区焊接维修', location: '精炼C段3号炉前',
     workStartTime: '2026-05-10T08:00:00Z', workEndTime: '2026-05-10T17:00:00Z',
-    workLevel: '一级', applicantId: fanId, status: 'approved',
+    workLevel: '一级', applicantId: fanId,
   });
   await ensureOne(prisma.workPermit, { permitNo: 'WP-2026-002' }, {
     orgId, permitNo: 'WP-2026-002', workType: 'confined_space',
     title: '储罐清淤作业', location: '危化品仓库储罐区',
     workStartTime: '2026-06-01T08:00:00Z', workEndTime: '2026-06-02T17:00:00Z',
-    workLevel: '特殊', applicantId: fanId, status: 'approved',
+    workLevel: '特殊', applicantId: fanId,
   });
 
   // ── 八、隐患排查与治理 ─────────────────────────────────────
@@ -484,7 +484,8 @@ async function main() {
     orgId, accidentNo: 'AQ-2025-001',
     title: '2025年8月轧制A段手指轻伤事故',
     accidentType: '轻伤', accidentLevel: 'general',
-    happenTime: '2025-08-15T10:30:00Z', location: '轧制A段2号轧机',
+    happenTime: '2025-08-15T10:30:00Z', reportTime: '2025-08-15T11:00:00Z',
+    location: '轧制A段2号轧机',
     description: '操作工人未按规程佩戴防护手套，手指被卷入传动辊。左手中指末节撕脱伤，直接经济损失约2.5万元。',
     reporterId: fanId, status: 'archived',
   });
