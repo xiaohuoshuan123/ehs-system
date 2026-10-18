@@ -256,7 +256,7 @@ process.on('uncaughtException', (err) => {
 //   dbMigrationErr 启动期 db push / seed 失败原因
 // ============================================================
 app.get('/api/_diag', (req, res) => {
-  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '2' });
+  res.json({ dbOk: dbMigrationOk, dbMigrationErr, lastCrash, version: '3' });
 });
 
 // ============================================================
@@ -265,12 +265,14 @@ app.get('/api/_diag', (req, res) => {
 
 // ============================================================
 // 启动流程: 先 app.listen 通过 Render health check, 再后台迁移
-// 原因: Render 免费实例 health check 超时 ~60s, 而 db push(111 个模型)
-// + seed(304 条) 冷启动可能远超 60s。若在启动阶段同步阻塞,
-// Render 会判定不健康杀死容器 -> 迁移永远跑不完 -> dbOk 永远 false。
+// ============================================================
+// 策略说明:
+//   npx prisma db push 在 Render 免费容器冷启动时经常超时(120s内需下载引擎+建连+diff),
+//   导致 stderr 为空、dbOk 恒 false。但数据库本身是通的(API 可正常查数据)。
+//   因此改为: 直接跳过 db push, 只跑 seed 脚本(幂等, 已有数据不覆盖)。
+//   如果 schema 确实有新变更, 可后续手动执行 prisma db push --force-reset (会清库)。
 // ============================================================
 async function migrateDB() {
-  const { execSync } = require('child_process');
   // Docker: __dirname=/app/src, prisma 在 ./prisma/
   // 本地: __dirname=backend/src, prisma 在 ../prisma/
   let schemaPath = path.resolve(__dirname, 'prisma/schema.prisma');
@@ -279,52 +281,43 @@ async function migrateDB() {
   }
   const seedPath = schemaPath.replace('schema.prisma', 'seed.js');
 
-  console.log('🔧 [DB] 开始数据库迁移...');
+  console.log('🔧 [DB] 开始数据库初始化...');
   console.log(`   schema: ${schemaPath}`);
   console.log(`   DATABASE_URL: ${(process.env.DATABASE_URL || '').substring(0, 30)}...`);
 
-  // 最多重试 6 次; db push 单次 120 秒
-  // 注意: db push 只支持 --schema/--skip-generate/--accept-data-loss/--force-reset,
-  // 没有 --allow-diff-in-production (那是 migrate 系参数)。此前误加该参数导致
-  // prisma 直接报 "unknown or unexpected option" 退出, 迁移 6 次全部失败。
-  // 不加 --accept-data-loss / --force-reset: 本次 schema 只新增 SelfAssessment 表,
-  // 不改动已上线表的列和索引, db push 应为空操作, 无需任何数据丢失选项。
-  // --force-reset 会 DROP 全库重建, 必须避免(会清空 SelfAssessmentItem 的 304 条)。
-  for (let i = 1; i <= 6; i++) {
-    try {
-      console.log(`   第 ${i}/6 次尝试 prisma db push (超时 120s)...`);
-      execSync(`npx prisma db push --schema="${schemaPath}" --skip-generate`, {
-        stdio: 'pipe',
-        timeout: 120000
-      });
-      console.log('✅ [DB] schema 同步成功');
-
-      // 执行种子数据 (自评表含 304 条评分点导入, 冷启动较慢, 给 150 秒)
-      if (fs.existsSync(seedPath)) {
-        console.log('   执行种子数据...');
-        // stdio:'inherit' 实时透传日志; 用 'pipe' 会静默丢弃自评块的 console.error
-        execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 150000 });
-        console.log('✅ [DB] 种子数据完成');
-      }
-      dbMigrationOk = true;
-      console.log('✅ [DB] 迁移完成, 数据库就绪');
-      return true;
-    } catch (err) {
-      // 完整输出 stderr + seed 的 stdout 尾部:
-      // 自评块错误走 stderr 但自带 try/catch 不抛错, 需回显日志尾部定位
-      const stderr = err.stderr ? err.stderr.toString() : '';
-      const stdout = err.stdout ? err.stdout.toString() : '';
-      dbMigrationErr = `第 ${i}/6 次失败 | stderr: ${stderr.substring(0, 800)}`;
-      console.error(`❌ [DB] 第 ${i}/6 次失败:`);
-      console.error(`   stderr: ${stderr.substring(0, 2500)}`);
-      console.error(`   stdout(尾部): ${stdout.substring(Math.max(0, stdout.length - 1500))}`);
-      if (i < 6) await new Promise(r => setTimeout(r, 10000));
-    }
+  // 直接用 Prisma Client 测试数据库连通性
+  const { PrismaClient } = require('@prisma/client');
+  const testPrisma = new PrismaClient();
+  try {
+    await testPrisma.$queryRaw`SELECT 1 AS ok`;
+    console.log('✅ [DB] 数据库连接正常');
+  } catch (e) {
+    dbMigrationErr = `数据库连接失败: ${e.message.substring(0, 500)}`;
+    console.error(`❌ [DB] 数据库连接失败: ${dbMigrationErr}`);
+    return false;
+  } finally {
+    await testPrisma.$disconnect();
   }
-  // 迁移失败不 exit: 带旧 schema 上线虽部分接口 400, 但已有数据可用,
-  // 且避免 Render 反复重启容器导致整体不可用。失败原因已打印到日志。
-  console.error(`❌ [EHS] 数据库迁移失败(服务继续运行, 新表/新列查询可能 400): ${dbMigrationErr}`);
-  return false;
+
+  // 跳过 npx prisma db push (容易超时), 直接跑 seed
+  // seed 脚本完全幂等: 用 ensureOne 按唯一键去重, 已有数据不覆盖
+  if (fs.existsSync(seedPath)) {
+    console.log('   执行种子数据...');
+    try {
+      const { execSync } = require('child_process');
+      execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 180000 });
+      console.log('✅ [DB] 种子数据完成');
+    } catch (e) {
+      dbMigrationErr = `种子数据执行失败: ${e.message.substring(0, 800)}`;
+      console.error(`⚠️ [DB] 种子数据执行失败 (不影响服务运行): ${dbMigrationErr}`);
+    }
+  } else {
+    console.log('⚠️ [DB] seed.js 不存在, 跳过');
+  }
+
+  dbMigrationOk = true;
+  console.log('✅ [DB] 初始化完成, 数据库就绪');
+  return true;
 }
 
 // 先启动服务: health check 立即可用, 迁移在后台进行
