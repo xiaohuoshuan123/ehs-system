@@ -1350,3 +1350,98 @@ model SafetyScore {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ===================== 十三、绩效评定 - 标准化自评 =====================
+
+model SelfAssessmentItem {
+  id              String   @id @default(cuid())
+  orgId           String
+  year            Int
+  itemCode        String   // 如 "1.1.1", "2026-1.1.1"
+  category        String   // 类目名: "目标管理", "组织构架" 等
+  categoryNo      Int      // 类目序号: 1-13
+  item            String?  // 考评项目名
+  itemNo          String?  // 如 "1.1"
+  contentNo       String?  // 如 "1.1.1"
+  content         String   // 考评内容
+  score           Float?   // 标准分值
+  method          String?  // 评定方法
+  seq             Int?     // 原始 Excel 行序号(用于正确排序)
+  actual          Float?   // 实得分数
+  notApplicable   Boolean  @default(false)
+  assessmentDesc  String?  // 自评/评审描述
+  deductionReason String?  // 扣分说明
+  measure         String?  // 整改措施
+  completed       Boolean?
+  tracker         String?  // 跟踪人
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([itemCode])
+}
+
+model SelfAssessment {
+  id                String   @id @default(cuid())
+  orgId             String?
+  year              Int      @unique
+  assessorId        String?
+  assessorName      String?
+  status            String   @default("draft") // draft/submitted/approved
+  submittedAt       DateTime?
+  itemTotal         Int?
+  totalScore        Float?
+  excludedScore     Float?
+  actualScore       Float?
+  score             Float?
+  note              String?
+  perfEmployees     Int?     // 职工平均人数
+  perfDeaths        Int?     // 死亡人数
+  perfSeriousInjuries Int?   // 重伤人数
+  perfMajorAbove    Boolean? // 是否有较大以上事故
+  perfEconLossMax   Float?   // 最大一次事故直接经济损失(万元)
+  perfOdCases       Int?     // 职业病人数
+  perfChecker       String?  // 核对人
+  perfCheckDate     DateTime?
+  approvedById      String?
+  approvedByName    String?
+  approvedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ===================== 十三、绩效评定 - 未遂事件 =====================
+
+model NearMiss {
+  id                  String   @id @default(cuid())
+  orgId               String
+  title               String
+  description         String?
+  occurTime           DateTime?
+  location            String?
+  potentialSeverity   String?  // high/medium/low
+  reporterId          String?
+  reportTime          DateTime @default(now())
+  status              String   @default("draft") // draft/submitted/closed
+  handleResult        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ===================== 安全金字塔 KPI =====================
+
+model SafetyKpi {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  month       Int?
+  totalReportCount Int @default(0)    // 隐患上报总数
+  hiddenDangerCount  Int @default(0)  // 隐患数
+  violationCount     Int @default(0)  // 违章数
+  accidentCount      Int @default(0)  // 事故数
+  nearMissCount      Int @default(0)  // 未遂事件数
+  trainingCount      Int @default(0)  // 培训次数
+  drillCount         Int @default(0)  // 演练次数
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

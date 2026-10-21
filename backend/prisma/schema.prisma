@@ -8,7 +8,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -1252,31 +1252,6 @@ model PerformanceReview {
   updatedAt   DateTime @updatedAt
 }
 
-// ===================== 安全金字塔 KPI =====================
-// 7 层事故金字塔 + 安全观察 / STOP
-// 图片层级（上→下）：
-//   1. 死亡                2. 损失工作日
-//   3. 工作受限            4. 可记录（医疗/工伤申报）
-//   5. 急救箱事故          6. 无伤害事故
-//   7. 安全观察            8. STOP（另计）
-model SafetyKpi {
-  id            String   @id @default(cuid())
-  orgId         String
-  year          Int
-  month         Int      @default(0) // 0=年度累计, 1-12=月度
-  fatalities    Int      @default(0) // 死亡
-  lostWorkdays  Int      @default(0) // 损失工作日
-  workRestricted Int     @default(0) // 工作受限
-  recordable    Int      @default(0) // 可记录（医疗/工伤申报）
-  firstAid      Int      @default(0) // 急救箱事故
-  noInjury      Int      @default(0) // 无伤害事故
-  safetyObs     Int      @default(0) // 安全观察
-  stopCount     Int      @default(0) // STOP
-  remark        String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
 model ContinuousImprovement {
   id          String   @id @default(cuid())
   orgId       String
@@ -1376,545 +1351,97 @@ model SafetyScore {
   updatedAt   DateTime @updatedAt
 }
 
-// ===================== 领导作用 (GB/T 33000-2025 第4章) =====================
+// ===================== 十三、绩效评定 - 标准化自评 =====================
 
-// 4.1 安全领导力记录
-model SafetyLeadership {
-  id          String   @id @default(cuid())
-  orgId       String
-  leaderName  String
-  leaderRole  String   // chairman/president/deputy/chief_engineer
-  leadershipType String  // philosophy_example/resource_support/risk_control/hazard_remediation/emergency/human_rights
-  content     String
-  date        DateTime
-  location    String?
-  participants String?  // JSON: 参与人员
-  photos      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// 4.2 安全履职评价
-model LeadershipEvaluation {
-  id          String   @id @default(cuid())
-  orgId       String
-  leaderName  String
-  leaderRole  String
-  year        Int
-  quarter     Int?     // 1-4
-  evaluationPeriod String  // quarterly/semi_annual/annual
-  philosophyScore Float  @default(0)
-  exampleScore    Float  @default(0)
-  resourceScore   Float  @default(0)
-  riskControlScore Float @default(0)
-  hazardScore     Float  @default(0)
-  emergencyScore  Float  @default(0)
-  humanRightsScore Float @default(0)
-  totalScore    Float  @default(0)
-  grade         String   @default("excellent") // excellent/good/qualified/unqualified
-  remarks       String?
-  evaluator     String?
-  evaluatedAt   DateTime
-  resultApplied Boolean  @default(false) // 是否纳入绩效考核
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ===================== 基础保障 (GB/T 33000-2025 第5章) =====================
-
-// 5.5 科技保障
-model TechnologyProtection {
-  id          String   @id @default(cuid())
-  orgId       String
-  type        String   // monitoring_warning/intelligent_system/robot_automation/digital_twin
-  name        String
-  description String?
-  vendor      String?
-  implementDate DateTime?
-  status      String   @default("planning") // planning/implementing/running/deprecated
-  investment  Float?
-  effectiveness String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 策划 (GB/T 33000-2025 第6章) =====================
-
-// 6.1 安全理念
-model SafetyPhilosophy {
-  id          String   @id @default(cuid())
-  orgId       String
-  content     String   // 安全理念内容
-  slogan      String?  // 安全口号
-  values      String?  // JSON: 核心价值观列表
-  version     Int      @default(1)
-  effectiveDate DateTime
-  description String?
-  status      String   @default("active") // active/archived
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// 6.4 信息沟通
-model SafetyCommunication {
-  id          String   @id @default(cuid())
-  orgId       String
-  title       String
-  type        String   // internal/external/government/union/contractor
-  channel     String   // meeting/document/training/newsletter/wechat
-  content     String
-  publisher   String
-  publishDate DateTime
-  audience    String?  // 受众
-  attachments String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 隐患排查治理 (GB/T 33000-2025 第8章) =====================
-
-// 8.3 重大事故隐患管理
-model MajorHazard {
-  id          String   @id @default(cuid())
-  orgId       String
-  title       String
-  location    String
-  description String
-  riskLevel   String   @default("major") // major/critical
-  category    String   // chemical/equipment/environment/process/construction
-  discoveredBy String
-  discoveredAt DateTime
-  responsiblePerson String @default("")
-  remediationPlan String   @default("")
-  deadline    DateTime?
-  status      String   @default("pending") // pending/remediating/verified/closed
-  verificationResult String?
-  verifiedBy  String?
-  verifiedAt  DateTime?
-  reportStatus String  @default("not_reported") // not_reported/reported/reported_verified
-  reportDate  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 人员管理 (GB/T 33000-2025 第9章) =====================
-
-// 9.1 人员准入
-model PersonnelEntry {
-  id          String   @id @default(cuid())
-  orgId       String
-  employeeName String
-  employeeNo  String?
-  position    String
-  department  String
-  entryDate   DateTime
-  education   String   @default("high_school") // primary/junior_high/high_school/college/graduate
-  trainingRecord String?  // JSON: 培训记录
-  skills      String?    // JSON: 技能等级
-  healthCheck String     @default("pending") // passed/pending/failed
-  physicalCondition String @default("normal") // normal/restricted
-  psychological String    @default("normal") // normal/attention
-  qualificationNo String?
-  qualificationExpire DateTime?
-  status      String   @default("active") // active/suspended/terminated
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// 9.3.3 不安全行为管控
-model UnsafeBehavior {
-  id          String   @id @default(cuid())
-  orgId       String
-  employeeName String
-  employeeNo  String?
-  behaviorType String  // smoking/missing_ppe/improper_operation/speed_racing/other
-  description String
-  location    String   @default("")
-  date        DateTime
-  reportedBy  String
-  handlingType String  @default("education") // education/warning/punishment
-  handlingResult String?
-  photos      String?
-  status      String   @default("pending") // pending/handled/closed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 现场管理 (GB/T 33000-2025 第10章) =====================
-
-// 10.4 异常处置
-model AbnormalHandling {
-  id          String   @id @default(cuid())
-  orgId       String
-  title       String
-  location    String
-  abnormalType String  @default("equipment") // equipment/process/environment/personnel/other
-  description String
-  discoveredBy String
-  discoveredAt DateTime
-  riskLevel   String   @default("low") // low/medium/high/critical
-  immediateAction String @default("")
-  responsiblePerson String @default("")
-  handlingPlan String @default("")
-  handlingResult String?
-  completedAt DateTime?
-  reviewResult String?  // 回顾总结
-  status      String   @default("pending") // pending/handling/completed/reviewed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 检查评价 (GB/T 33000-2025 第12章) =====================
-
-// 12.1 安全检查
-model SafetyInspection {
-  id          String   @id @default(cuid())
-  orgId       String
-  title       String
-  type        String   @default("routine") // routine/special/comprehensive/internal_audit
-  inspector   String
-  inspectionDate DateTime
-  location    String
-  items       String   // JSON: [{item, requirement, result, score}]
-  totalScore  Float    @default(0)
-  issuesFound String?
-  improvementRequired Boolean @default(false)
-  status      String   @default("pending") // pending/completed/improved
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// 12.2 绩效评价
-model PerformanceAssessment {
-  id          String   @id @default(cuid())
-  orgId       String
-  year        Int
-  period      String   @default("annual") // quarterly/semi_annual/annual
-  leaderScore Float    @default(0)
-  targetScore Float    @default(0)
-  organizationScore Float @default(0)
-  riskControlScore Float @default(0)
-  hazardScore Float    @default(0)
-  personnelScore Float @default(0)
-  siteScore   Float    @default(0)
-  emergencyScore Float @default(0)
-  improvementScore Float @default(0)
-  totalScore  Float    @default(0)
-  grade       String   @default("excellent") // excellent/good/qualified/unqualified
-  summary     String?
-  evaluator   String?
-  evaluatedAt DateTime?
-  status      String   @default("draft") // draft/completed/approved
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 持续改进 (GB/T 33000-2025 第13章) =====================
-
-// 13.1 未遂事故管理
-model NearMiss {
-  id          String   @id @default(cuid())
-  orgId       String
-  title       String
-  location    String
-  description String
-  potentialSeverity String @default("serious") // minor/serious/catastrophic
-  reportedBy  String
-  reportedAt  DateTime
-  analysis    String?  // 原因分析
-  correctiveAction String?
-  completedAt DateTime?
-  status      String   @default("reported") // reported/analyzing/corrected/closed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 工业互联网安全生产 (GB/T 46884.1-2025) =====================
-
-// 作业行为管理 (AI视频监控)
-model WorkBehaviorMonitoring {
-  id          String   @id @default(cuid())
-  orgId       String
-  cameraId    String?
-  cameraName  String?
-  cameraLocation String
-  behaviorType String  @default("missing_helmet") // missing_helmet/missing_ppe/smoking/fall_risk/intrusion/unsafe_action
-  riskLevel   String   @default("medium") // low/medium/high/critical
-  detectTime  DateTime
-  description String?
-  imageUrl    String?
-  videoUrl    String?
-  handledBy   String?
-  handledAt   DateTime?
-  handlingResult String?
-  status      String   @default("active") // active/handled/closed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// 隐患治理成效评估
-model HazardRemediationEvaluation {
-  id          String   @id @default(cuid())
-  orgId       String
-  year        Int
-  quarter     Int?
-  totalHazards Int     @default(0)
-  remediatedHazards Int @default(0)
-  majorHazards Int     @default(0)
-  majorRemediated Int  @default(0)
-  overdueHazards Int   @default(0)
-  remediationRate Float @default(0)
-  averageRemediationDays Float @default(0)
-  evaluationScore Float @default(0)
-  evaluationLevel String @default("qualified") // excellent/good/qualified/poor
-  evaluationContent String?
-  evaluator   String?
-  evaluatedAt DateTime?
-  status      String   @default("draft") // draft/completed
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ===================== 十四、环保管理 (独立模块, 对标《排污许可分类管理名录》/GB 5085 土壤/GB 12348 噪声) =====================
-
-// 14.1 废水管理 (GB 21900 铝工业水污染物排放标准 / 重金属在线监测)
-model WastewaterEmission {
-  id              String   @id @default(cuid())
-  orgId           String
-  dischargePoint  String            // 排放口编号/名称
-  source          String            // 产生工序/污染源
-  category        String            // 类别: general_chemistry/cooling/domestic/heavy_metal
-  pollutants      String            // 主要污染物(重金属/SS/ COD/ 石油类等)
-  designFlow      Float?            // 设计流量 m3/h
-  measuredFlow    Float?            // 实测流量 m3/h
-  phRange         String?           // pH 实测范围
-  cod             Float?            // COD mg/L
-  ammoniaNitrogen Float?            // 氨氮 mg/L
-  heavyMetal      String?           // 重金属含量描述 (GB 21900 特征限值)
-  standardLimit   String?           // 执行标准限值
-  exceedance      String   @default("normal") // normal/exceeded
-  onlineMonitor   String   @default("no") // 在线监测: yes/no
-  treatmentProcess String          // 处理工艺/构筑物
-  measurementDate DateTime?
-  responsiblePerson String @default("")
-  remark          String   @default("")
-  status          String   @default("normal") // normal/abnormal/repair
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-// 14.2 废气管理 (GB 21901 铝冶炼/GB 16297 大气综合/挥发性有机物)
-model ExhaustEmission {
-  id            String   @id @default(cuid())
-  orgId         String
-  emissionSource String           // 排放源: 熔炼/铸轧/氧化/喷涂/酸洗
-  category      String            // 类别: so2/nox/vocs/particulate/fluorine
-  pollutant     String            // 具体污染物
-  stackHeight   Float?            // 排气筒高度 m
-  designRate    Float?            // 设计排放速率 kg/h
-  measuredRate  Float?            // 实测排放速率 kg/h
-  concentration Float?            // 实测浓度 mg/m3
-  standardLimit String?           // 执行限值
-  exceedance    String   @default("normal") // normal/exceeded
-  onlineMonitor String   @default("no")
-  treatmentDevice String          // 治理设施: 布袋除尘/湿法脱硫/蓄热焚烧等
-  measurementDate DateTime?
-  responsiblePerson String @default("")
-  remark        String   @default("")
-  status        String   @default("normal") // normal/abnormal/repair
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// 14.3 固废管理 (危废台账 - 危废法/固废法, 产生-贮存-转移-处置全过程)
-model SolidWasteRecord {
-  id            String   @id @default(cuid())
-  orgId         String
-  wasteName     String            // 废物名称
-  wasteCode     String?           // 危险废物废物代码 (GB 5085, 8位) - 一般固废无此代码
-  category      String            // general/solid/hazardous
-  hazardClass   String   @default("none") // none/toxicity/corrosive/flammable/infectious 等危险特性
-  originProcess String            // 产生工序
-  generationDate DateTime
-  quantity      Float?            // 数量 kg
-  unit          String   @default("kg")
-  storageLocation String          // 贮存场所/危废间位置
-  storageDays   Int?              // 贮存天数
-  transportUnit String?           // 承运单位 (转移阶段填写, 产生/贮存阶段为空)
-  carrierLicense String?          // 承运资质编号
-  disposalMethod String?          // 处置方式: incinerate/solidify/utilize
-  disposalUnit  String?           // 处置单位 (处置阶段填写)
-  disposalUnitLicense String?     // 处置单位危废经营许可编号
-  manifestNo    String?           // 转移联单编号
-  responsiblePerson String @default("")
-  remark        String   @default("")
-  status        String   @default("generated") // generated/stored/transferred/disposed
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// 14.4 噪声管理 (GB 12348 工业企业厂界环境噪声排放标准, 昼间60dB/夜间50dB)
-model NoiseMonitoring {
-  id            String   @id @default(cuid())
-  orgId         String
-  boundaryPoint String            // 厂界测点: 东/南/西/北/东南角等
-  pointCode     String?           // 测点编号
-  noiseSource   String            // 声源: 风机/水泵/破碎机/运输车辆
-  dayValue      Float?            // 昼间等效声级 Leq dB(A)
-  nightValue    Float?            // 夜间等效声级 Leq dB(A)
-  standardClass String   @default("2") // 2/3/4a 类声环境功能区
-  dayLimit      Float?            // 昼间限值
-  nightLimit    Float?            // 夜间限值
-  exceedance    String   @default("normal") // normal/exceeded
-  monitoringDate DateTime
-  monitoringUnit String           // 监测单位
-  responsiblePerson String @default("")
-  treatmentMeasure String @default("")
-  remark        String   @default("")
-  status        String   @default("normal") // normal/exceeded/improved
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// 14.5 土壤管理 (GB 5085 土壤环境质量/GB 15618 农用地/DZ 场地风险管控)
-model SoilMonitoring {
-  id            String   @id @default(cuid())
-  orgId         String
-  plotName      String            // 地块名称
-  location      String            // 采样点位置
-  depth         String?           // 采样深度 0-0.5/0.5-1.5/1.5-6m
-  sampleType    String   @default("industrial") // industrial/residential/farm 用地类型
-  pollutants    String            // 监测因子: 砷/铅/汞/镉/铬/苯系物等
-  ph            Float?
-  heavyMetals   String?           // 重金属实测值描述
-  vocs          String?           // 挥发性有机物实测值描述
-  standardLimit String?           // 执行标准(GB 36600第一类/第二类标准)
-  exceedance    String   @default("normal")
-  monitoringDate DateTime
-  monitoringUnit String
-  responsiblePerson String @default("")
-  treatmentMeasure String @default("")
-  remark        String   @default("")
-  status        String   @default("normal") // normal/exceeded/remediated
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// 14.6 环保许可管理 (《排污许可分类管理名录》- 重点/简化管理; 环评+排污许可证+备案)
-model EnvPermit {
-  id            String   @id @default(cuid())
-  orgId         String
-  permitType    String            // 类型: env_assessment/discharging_permit/filing/annual_report
-  permitName    String            // 证书/批文名称
-  permitNo      String            // 编号
-  issuingAuthority String         // 发证机关
-  managementCategory String   @default("general") // key/simplified/general 重点/简化/不需要
-  approvalDate  DateTime
-  expiryDate    DateTime          // 有效期截止
-  permitScope   String            // 许可范围/排污种类与限值
-  annualReport  String   @default("not_required") // required/done/not_required 年度执行报告
-  renewalPlan   String   @default("none") // none/planned/submitted 续证计划
-  responsiblePerson String @default("")
-  remark        String   @default("")
-  status        String   @default("valid") // valid/near_expiry/expired/renewed
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-// ==================== 十四、环境管理 (GB/T 24001-2016) ====================
-
-// 15.1 环境因素识别与评价 (GB/T 24001-2016 条款 6.1.2 环境因素)
-// 与 RiskFactor(危险源) 区分: 危险源面向人身/财产损失风险, 环境因素面向环境影响
-model EnvFactor {
-  id          String   @id @default(cuid())
-  orgId       String?
-  factorName  String            // 环境因素名称
-  activity    String            // 涉及的活动/产品/服务
-  workUnit    String   @default("") // 所属作业单元
-  emissionType String   @default("waste_water") // waste_water/exhaust/solid_waste/noise/soil/energy/其他
-  impact      String            // 环境影响描述
-  grade       String   @default("general")     // major/general 重要环境因素/一般
-  measure     String   @default("")             // 应对措施
-  responsiblePerson String @default("")
-  reviewDate  DateTime?
-  remark      String   @default("")
-  status      String   @default("active")      // active/eliminated/under_review
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// ==================== 十三、绩效评定 (标准化自评打分) ====================
-
-// 15.2 标准化自评评分点
-// 对标《有色金属压力加工企业安全生产标准化评定标准》13 类目/46 项目/239 条内容/1000 分制
-// 标准化得分 = 实际得分 ÷ (1000 - 不涉及项目分值) × 100
-// 数据来源: Arconic 标准化自评表(2019.8), 由 prisma/seed.js 幂等导入
 model SelfAssessmentItem {
   id              String   @id @default(cuid())
-  orgId           String?  // 可空: 标准化自评是全厂层面的考评, 不限于单一组织
-  itemCode        String   @unique  // 考评内容唯一编码; 历年自评复用同一套编码,
-                                    // 故新年度用 "年份-" 前缀区分 (如 2019 年为 "1.1.1",
-                                    // 2026 年为 "2026-1.1.1")。保持全局唯一索引不变,
-                                    // 避免对已上线表删约束触发 db push 数据丢失警告。
-  year            Int              // 自评年度
-  category        String           // 类目名称 (如 "九、危险源监控")
-  categoryNo      Int              // 类目序号 1-13
-  item            String   @default("") // 考评项目名 (如 "9.1 辨识与评估")
-  itemNo          String   @default("") // 项目编号 (如 "9.1")
-  contentNo       String   @default("") // 原表考评内容编号
-  content         String           // 考评内容描述
-  seq             Int      @default(0)  // 原表行序号 (类目内排序键)。
-                                        // 必须用它排序: 考评内容续行(如 "13-1-2"~"13-6-2"
-                                        // 是 "13.2.2 要明确下列事项" 的 (1)~(6) 列举项)
-                                        // 用连字符编号, ASCII 里 '-'(45) < '.'(46),
-                                        // 若按 itemCode 字典序排会把整组续行挤到类目最前,
-                                        // 导致"13.2持续改进"孤行且脱离其父项。
-                                        // 该字段只在新增列时由 db push 填充默认值 0,
-                                        // 历史行由回填脚本按原始 Excel 顺序写回。
-  score           Float?           // 标准分值 (子条/续行为空, 不单独计分)
-  method          String   @default("") // 考评办法 (扣分规则)
-  actual          Float?           // 实际得分
-  notApplicable   Boolean  @default(false) // 是否不涉及(不计入考评)
-  assessmentDesc  String   @default("") // 自评/评审描述 (企业实际执行情况说明)
-  deductionReason String   @default("") // 扣分说明
-  measure         String   @default("") // 后续整改措施
-  completed       Boolean?         // 整改是否完成
-  tracker         String   @default("") // 跟踪人
-  remark          String   @default("")
+  orgId           String
+  year            Int
+  itemCode        String   // 如 "1.1.1", "2026-1.1.1"
+  category        String   // 类目名: "目标管理", "组织构架" 等
+  categoryNo      Int      // 类目序号: 1-13
+  item            String?  // 考评项目名
+  itemNo          String?  // 如 "1.1"
+  contentNo       String?  // 如 "1.1.1"
+  content         String   // 考评内容
+  score           Float?   // 标准分值
+  method          String?  // 评定方法
+  seq             Int?     // 原始 Excel 行序号(用于正确排序)
+  actual          Float?   // 实得分数
+  notApplicable   Boolean  @default(false)
+  assessmentDesc  String?  // 自评/评审描述
+  deductionReason String?  // 扣分说明
+  measure         String?  // 整改措施
+  completed       Boolean?
+  tracker         String?  // 跟踪人
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@unique([itemCode])
 }
 
-// 15.1 标准化自评表提交记录 (一年一张, 由评分点汇总生成)
-// 打分方式: 总入口表格内联打分 -> 暂存/提交, 不逐项弹窗
-// 提交时固化得分与自评人/时间, submitted 状态可审批归档
 model SelfAssessment {
-  id              String    @id @default(cuid())
-  year            Int       @unique   // 自评年度 (每年一张)
-  orgId           String?
-  status          String    @default("draft")   // draft 暂存 / submitted 已提交 / approved 已审批归档
-  assessorId      String?   // 自评人 User.id
-  assessorName    String?   // 自评人姓名
-  createdAt       DateTime  @default(now())     // 自评时间 (草稿创建时间)
-  submittedAt     DateTime?                   // 提交时间
-  approvedById    String?
-  approvedByName  String?
-  approvedAt      DateTime?
-  itemTotal       Int       @default(0)        // 评分点数量
-  totalScore      Float     @default(0)        // 标准满分
-  excludedScore   Float     @default(0)        // 不涉及分值 (从分母排除)
-  actualScore     Float     @default(0)        // 实际得分
-  score           Float     @default(0)        // 标准化得分 = actualScore / (totalScore - excludedScore) * 100
-  // ---- 安全绩效指标 (申请评审之日前一年内, 自评人依据事故/职业病/经济损失台账填报) ----
-  // 标准无系统内数据源, 故落库为独立字段; 千人死亡率/千人重伤率/职业病发病率由前端实时计算, 不落库。
-  perfEmployees      Int     @default(0)   // 职工平均人数
-  perfDeaths         Int     @default(0)   // 死亡人数
-  perfSeriousInjuries Int     @default(0) // 重伤人数 (千人重伤率分子)
-  perfMajorAbove     Boolean @default(false) // 是否发生较大及以上生产安全事故
-  perfEconLossMax    Float   @default(0)   // 最大一次事故直接经济损失 (万元)
-  perfOdCases        Int     @default(0)   // 职业病发病/新增例数
-  perfChecker        String  @default("")  // 安全绩效核对人
-  perfCheckDate      DateTime?             // 安全绩效核对日期
-  note            String    @default("")       // 自评人说明 / 审批意见
+  id                String   @id @default(cuid())
+  orgId             String?
+  year              Int      @unique
+  assessorId        String?
+  assessorName      String?
+  status            String   @default("draft") // draft/submitted/approved
+  submittedAt       DateTime?
+  itemTotal         Int?
+  totalScore        Float?
+  excludedScore     Float?
+  actualScore       Float?
+  score             Float?
+  note              String?
+  perfEmployees     Int?     // 职工平均人数
+  perfDeaths        Int?     // 死亡人数
+  perfSeriousInjuries Int?   // 重伤人数
+  perfMajorAbove    Boolean? // 是否有较大以上事故
+  perfEconLossMax   Float?   // 最大一次事故直接经济损失(万元)
+  perfOdCases       Int?     // 职业病人数
+  perfChecker       String?  // 核对人
+  perfCheckDate     DateTime?
+  approvedById      String?
+  approvedByName    String?
+  approvedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// ===================== 十三、绩效评定 - 未遂事件 =====================
+
+model NearMiss {
+  id                  String   @id @default(cuid())
+  orgId               String
+  title               String
+  description         String?
+  occurTime           DateTime?
+  location            String?
+  potentialSeverity   String?  // high/medium/low
+  reporterId          String?
+  reportTime          DateTime @default(now())
+  status              String   @default("draft") // draft/submitted/closed
+  handleResult        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ===================== 安全金字塔 KPI =====================
+
+model SafetyKpi {
+  id          String   @id @default(cuid())
+  orgId       String
+  year        Int
+  month       Int?
+  totalReportCount Int @default(0)    // 隐患上报总数
+  hiddenDangerCount  Int @default(0)  // 隐患数
+  violationCount     Int @default(0)  // 违章数
+  accidentCount      Int @default(0)  // 事故数
+  nearMissCount      Int @default(0)  // 未遂事件数
+  trainingCount      Int @default(0)  // 培训次数
+  drillCount         Int @default(0)  // 演练次数
+  remark      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
