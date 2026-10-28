@@ -1430,18 +1430,16 @@ model NearMiss {
 // ===================== 安全金字塔 KPI =====================
 
 model SafetyKpi {
-  id          String   @id @default(cuid())
-  orgId       String
-  year        Int
-  month       Int?
-  totalReportCount Int @default(0)    // 隐患上报总数
-  hiddenDangerCount  Int @default(0)  // 隐患数
-  violationCount     Int @default(0)  // 违章数
-  accidentCount      Int @default(0)  // 事故数
-  nearMissCount      Int @default(0)  // 未遂事件数
-  trainingCount      Int @default(0)  // 培训次数
-  drillCount         Int @default(0)  // 演练次数
-  remark      String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  orgId               String
+  year                Int
+  month               Int?
+  disabilityAccidents Int      @default(0)    // 伤残事故（顶层）
+  recordableAccidents Int      @default(0)    // 可记录事故
+  noInjuryAccidents   Int      @default(0)    // 无伤害事故
+  stopCount           Int      @default(0)    // 安全暂停（STOP）
+  safetyObs           Int      @default(0)    // 安全观察（底层）
+  remark              String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }
