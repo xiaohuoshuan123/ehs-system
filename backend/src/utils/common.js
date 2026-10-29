@@ -215,6 +215,24 @@ function parseOrder(str, modelName) {
   return out.length ? out : undefined;
 }
 
+// ---- 用户密码入库前统一 bcrypt ----
+// 登录用 cmpPw (bcrypt.compare) 校验，若明文直接入库，
+// bcrypt.compare(明文, 明文) 恒为 false，新建账号将永远登录失败。
+// 前端「用户管理」的密码字段是 createOnly 明文输入，必须在此处加密。
+async function normalizePassword(modelName, d) {
+  if (modelName !== 'User' || !d || !('password' in d)) return d;
+  const p = d.password;
+  // 编辑用户时前端不回填密码，可能传空字符串：不能覆盖成空，删掉该字段
+  if (p === null || p === undefined || String(p).trim() === '') {
+    delete d.password;
+    return d;
+  }
+  const s = String(p);
+  if (/^\$2[aby]\$/.test(s)) return d; // 已是 bcrypt 哈希，避免二次加密
+  d.password = await hashPw(s);
+  return d;
+}
+
 // ---- 通用CRUD生成器 ----
 // options: { filters: {field:'contains'...}, exact: ['field'...], include: [...] }
 function crud(modelName, opts = {}) {
@@ -233,6 +251,7 @@ function crud(modelName, opts = {}) {
       // 用户未绑定组织（演示账号常见）时，回退到第一个组织，保证 KPI 等表可正常写入。
       const d0 = sanitizeData({ ...req.body, createdAt: new Date() });
       const d = onlyKnownFields(m, modelName, d0);
+      await normalizePassword(modelName, d);
       if (d.orgId === null || d.orgId === undefined || d.orgId === '') {
         let uid = req.user && req.user.orgId;
         if (!uid) {
@@ -302,6 +321,7 @@ function crud(modelName, opts = {}) {
       // 不注入 updatedById（多数模型无此字段）；
       // updatedAt 由 Prisma @updatedAt 自动维护，手动传入可能冲突，故也不注入
       const d = onlyKnownFields(m, modelName, sanitizeData({ ...req.body }));
+      await normalizePassword(modelName, d);
       const result = await m.update({ where: { id }, data: d });
       ok(res, result, '更新成功');
     } catch (e) { fail(res, friendlyError(e)); }
