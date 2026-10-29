@@ -29,8 +29,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "3001"
+      # 不要在这里写死 PORT：Render 会注入自己的 PORT，容器必须监听它，
+      # 写死 3001 会被判定 "no open ports detected" 导致部署失败。
+      # 代码里是 process.env.PORT || 3001，会自动读取。
       # Neon 连接串：sync:false = 不落库，在控制台手填（含密码，切勿写进仓库）
       - key: DATABASE_URL
         sync: false

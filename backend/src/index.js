@@ -369,7 +369,7 @@ async function migrateDB() {
 }
 
 // 先启动服务: health check 立即可用, 迁移在后台进行
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 [EHS] 后端服务已启动: http://localhost:${PORT}`);
   console.log(`📡 [EHS] API健康检查: http://localhost:${PORT}/api/health`);
   console.log(`   DB 迁移: 进行中 (完成后 dbOk 置 true)`);

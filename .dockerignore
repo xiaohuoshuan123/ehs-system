@@ -1,0 +1,20 @@
+# 构建上下文瘦身：Render/Koyeb 只 clone 仓库（不含 node_modules），
+# 这里再挡一层，避免本地带依赖时构建上下文膨胀到几百 MB。
+**/node_modules
+**/dist
+**/dist-verify
+**/build-check-*
+**/node_modules.bak.*
+
+.git
+.github
+.workbuddy
+.vscode
+*.db
+*.db-journal
+backend/uploads
+backend/prisma/*.db
+
+# 文档与本地脚本不影响镜像
+*.md
+!README.md
