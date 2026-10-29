@@ -1,0 +1,36 @@
+{
+  // ============================================================
+  // 根级 wrangler 配置：给「部署命令在仓库根执行」的场景兜底。
+  //
+  // 背景：Cloudflare Dashboard 里创建的这个 Worker，构建命令/根目录是灰的、改不了，
+  //       而 cwd 在仓库根时找不到 frontend/wrangler.jsonc，wrangler 就退回到
+  //       Dashboard 的静态资源默认值（指向 frontend 源码目录），导致：
+  //         - /src/main.js、/package.json 被公开
+  //         - /api/* 返回 404（worker.js 没被加载）
+  //       这里显式声明产物目录与 worker 入口，不再依赖 Dashboard 的配置。
+  //
+  // 与 frontend/wrangler.jsonc 是同一份意图的两处声明：
+  //   cwd=仓库根  → 读本文件（路径加 frontend/ 前缀）
+  //   cwd=frontend → 读 frontend/wrangler.jsonc（路径相对自身）
+  // 两种执行位置都能指向 frontend/dist 与 frontend/worker.js。
+  // ============================================================
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "ehs-system",
+  "main": "frontend/worker.js",
+  "compatibility_date": "2026-10-01",
+
+  "assets": {
+    "directory": "./frontend/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+
+  "vars": {
+    "BACKEND_ORIGIN": "https://ehs-api-jhgz.onrender.com"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}
