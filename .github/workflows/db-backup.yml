@@ -1,0 +1,49 @@
+name: 数据库每日备份
+
+# 免费方案：GitHub Actions 每天导出一次 Neon 数据库，产物保留 90 天
+# 启用前：仓库 Settings → Secrets and variables → Actions → New repository secret
+#   名称 DATABASE_URL，值填 Neon 的【直连】连接串（不要用 -pooler 那个）
+# 手动测试：Actions → 数据库每日备份 → Run workflow
+
+on:
+  schedule:
+    # UTC 18:00 = 北京时间次日 02:00
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 检查密钥
+        run: |
+          if [ -z "${{ secrets.DATABASE_URL }}" ]; then
+            echo "::error::未配置 DATABASE_URL 密钥"
+            exit 1
+          fi
+
+      - name: 安装 PostgreSQL 客户端
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: 导出数据库
+        env:
+          DB_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          STAMP=$(date +%Y%m%d-%H%M)
+          FILE="backup/ehs-${STAMP}.dump"
+          pg_dump "$DB_URL" --no-owner --no-privileges -Fc -f "$FILE"
+          ls -lh "$FILE"
+          echo "FILE=$FILE" >> "$GITHUB_ENV"
+
+      - name: 上传备份产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ehs-db-${{ github.run_id }}
+          path: backup/*.dump
+          retention-days: 90
+          compression-level: 0

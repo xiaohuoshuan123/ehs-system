@@ -16,7 +16,17 @@ RUN npm ci
 COPY backend/src ./
 COPY backend/prisma ./prisma
 
-# 生成 Prisma Client
+# 数据源方言：云上必须 postgresql（免费层无持久盘，SQLite 会丢）。
+# DB_PROVIDER=sqlite 可构建纯离线内网镜像。
+ARG DB_PROVIDER=postgresql
+RUN if [ "$DB_PROVIDER" = "postgresql" ]; then \
+      sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma && \
+      echo "✅ Prisma provider -> postgresql"; \
+    else \
+      echo "ℹ️ Prisma provider 保持 sqlite"; \
+    fi
+
+# 生成 Prisma Client（必须在上面的方言切换之后）
 RUN npx prisma generate
 
 # 复制启动脚本

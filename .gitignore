@@ -50,3 +50,8 @@ temp/
 .nyc_output/
 test-results/
 playwright-report/
+
+# 本地构建验证 / 依赖备份（不入库）
+frontend/node_modules.bak.*/
+frontend/build-check-*/
+frontend/dist-verify/

@@ -112,7 +112,7 @@ PPE物品 `/api/ppe` ｜ PPE发放 `/api/ppe-issue` ｜ 剂量计 `/api/dosimete
 |---|---|
 | 前端 | Vue 3.5 + Vite 8 + Element Plus 2.14 + Pinia + ECharts 6 |
 | 后端 | Node 20 + Express 4.19 + Prisma 5 |
-| 数据库 | PostgreSQL（生产，Render 托管）/ SQLite（本地开发） |
+| 数据库 | PostgreSQL（云端，Neon 免费托管）/ SQLite（本地开发与内网单机） |
 | 认证 | JWT Bearer Token |
 | 部署 | Render Blueprint（render.yaml）/ Docker Compose（内网） |
 
@@ -160,10 +160,14 @@ npm run dev             # :3000
 > 仓库内 `schema.sqlite.prisma` / `schema.mysql.prisma` / `schema.postgresql.prisma`
 > 为三套 schema 存档，切换前请先合并业务模型改动。
 
-### Render 一键部署（生产）
+### 云端免费部署（推荐，0 元）
 
-仓库已含 `render.yaml` Blueprint，在 Render 点 **Deploy** 即自动创建
-PostgreSQL（basic-256mb）+ 后端容器 + 前端 Nginx 容器；后端启动时自动 `prisma db push` 并执行 seed。
+**完整操作见 [`DEPLOY-FREE.md`](./DEPLOY-FREE.md)** —— 前端 Cloudflare Pages + 后端 Render 免费实例 + Neon 免费 PostgreSQL。
+
+`render.yaml` 只负责后端；前端由 Pages 从 `frontend/` 构建，`/api/*` 经 `frontend/functions/api/[[path]].js` 同域反代到后端。
+
+> 后端镜像构建时会把 `schema.prisma` 的 provider 自动切为 `postgresql`（见 `backend/Dockerfile` 的 `DB_PROVIDER`），
+> 启动时若检测不到数据表会自动建表并灌种子数据。
 
 ### 内网 Docker 部署
 

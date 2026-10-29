@@ -299,12 +299,57 @@ async function migrateDB() {
     await testPrisma.$disconnect();
   }
 
-  // 跳过 npx prisma db push (容易超时), 直接跑 seed
+  // ---------- 首次部署自动建表 ----------
+  // 免费云（Render / Koyeb）没有持久盘，PostgreSQL 才是唯一可靠存储。
+  // 表不存在时执行一次 prisma db push；已存在则跳过（避免每次冷启动都跑 diff 超时，也避免误删数据）。
+  const isPostgres = /^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL || '');
+  const appRoot = path.dirname(path.dirname(schemaPath));
+  const npxCmd = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+  const { execSync } = require('child_process');
+
+  let tablesReady = false;
+  try {
+    const probe = new PrismaClient();
+    let exists = false;
+    if (isPostgres) {
+      const rows = await probe.$queryRawUnsafe(
+        `SELECT COUNT(*)::int AS c FROM information_schema.tables WHERE table_schema='public' AND table_name='User'`
+      );
+      exists = Number(rows?.[0]?.c || 0) > 0;
+    } else {
+      const rows = await probe.$queryRawUnsafe(
+        `SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='User'`
+      );
+      exists = Number(rows?.[0]?.c || 0) > 0;
+    }
+    await probe.$disconnect();
+    tablesReady = exists;
+    console.log(exists ? '✅ [DB] 数据表已存在，跳过建表' : '⚠️ [DB] 未发现数据表，开始建表（prisma db push）');
+  } catch (e) {
+    console.error(`⚠️ [DB] 建表前探测失败: ${e.message}`);
+  }
+
+  if (!tablesReady) {
+    try {
+      execSync(`${npxCmd} prisma db push --skip-generate --accept-data-loss`, {
+        cwd: appRoot,
+        stdio: 'inherit',
+        timeout: 300000,
+        env: process.env,
+      });
+      console.log('✅ [DB] 建表完成');
+    } catch (e) {
+      dbMigrationErr = `建表失败: ${e.message.substring(0, 500)}`;
+      console.error(`❌ [DB] 建表失败: ${dbMigrationErr}`);
+      console.error('   提示: 检查 DATABASE_URL 是否为 Neon 的 -pooler 连接串，且连接串已开启 SSL（Neon 控制台复制时自带）');
+      return false;
+    }
+  }
+
   // seed 脚本完全幂等: 用 ensureOne 按唯一键去重, 已有数据不覆盖
   if (fs.existsSync(seedPath)) {
     console.log('   执行种子数据...');
     try {
-      const { execSync } = require('child_process');
       execSync(`node "${seedPath}"`, { stdio: 'inherit', timeout: 180000 });
       console.log('✅ [DB] 种子数据完成');
     } catch (e) {

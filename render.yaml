@@ -1,55 +1,44 @@
-# Render Blueprint - 永杰集团 EHS 系统一键部署
-# https://render.com/docs/blueprint-spec
+# ============================================================
+# Render Blueprint - 永杰集团 EHS 系统（免费方案 B）
+#
+# 架构：
+#   前端  Cloudflare Pages  →  /api/* 由 Pages Functions 反代
+#   后端  Render Free Web Service（本文件）
+#   数据库 Neon 免费 PostgreSQL（永久免费，替代 30 天过期的 Render 免费库）
+#
+# 部署方式：Render 控制台 → New → Blueprint → 选本仓库
+# 首次 Apply 后需在 ehs-backend → Environment 里补两个值：
+#   DATABASE_URL      Neon 的 -pooler 连接串（见 DEPLOY-FREE.md 第 1 步）
+#   ALLOWED_ORIGINS   你的 Pages 域名，如 https://ehs.pages.dev
+# ============================================================
 
-# ===== PostgreSQL 数据库 =====
-databases:
-  - name: ehs-postgres
-    plan: basic-256mb
-    databaseName: ehs
-    user: ehs
-    region: singapore
-
-# ===== 服务 =====
 services:
-  # ===== 后端 API (Docker 构建，Dockerfile 在 backend/ 子目录) =====
   - type: web
     name: ehs-backend
     runtime: docker
-    plan: starter
+    plan: free
     region: singapore
     repo: https://github.com/xiaohuoshuan123/ehs-system.git
     branch: main
     dockerfilePath: backend/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: "3001"
+      # Neon 连接串：sync:false = 不落库，在控制台手填（含密码，切勿写进仓库）
       - key: DATABASE_URL
-        fromDatabase:
-          name: ehs-postgres
-          property: connectionString
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRES_IN
         value: 7d
+      # 免费层无持久磁盘，上传目录仅在容器生命周期内有效（见 DEPLOY-FREE.md 注意事项）
       - key: UPLOAD_DIR
-        value: /app/uploads
+        value: /app/src/uploads
+      # 前端域名白名单（Pages 域名，逗号分隔可加自定义域名）
       - key: ALLOWED_ORIGINS
-        value: "https://ehs-frontend.onrender.com"
-
-  # ===== 前端 (Docker 构建，Nginx 静态站点) =====
-  - type: web
-    name: ehs-frontend
-    runtime: docker
-    plan: starter
-    region: singapore
-    repo: https://github.com/xiaohuoshuan123/ehs-system.git
-    branch: main
-    dockerfilePath: frontend/Dockerfile
-    dockerContext: .
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://ehs-backend-4hml.onrender.com/api
+        sync: false
