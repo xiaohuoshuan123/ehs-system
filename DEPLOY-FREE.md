@@ -106,7 +106,7 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 |---|---|---|
 | `frontend/worker.js` + `wrangler.jsonc` | Workers | worker 入口，`/api/*` 反代、其余交给静态资源 |
 | `frontend/functions/api/[[path]].js` | Pages | Pages Functions 反代（导出格式不同，无法共用一份） |
-| `frontend/public/_redirects` | Pages | SPA 兜底。Cloudflare 官方明确 Functions 优先于 `_redirects`，不会劫持 `/api/*` |
+| ~~`frontend/public/_redirects`~~ | ~~Pages~~ | **已删除**。SPA 兜底改由 `wrangler.jsonc` 的 `not_found_handling: single-page-application` 负责；`/api/*` 由 `run_worker_first` 保护。保留 `_redirects` 会触发 `Infinite loop detected`（code 100324）导致部署失败 |
 
 部署成功后拿到 `https://<项目名>.<子域>.workers.dev`（Pages 则是 `.pages.dev`），回 Render 把 `ALLOWED_ORIGINS` 改成这个域名并重新部署，然后用 `admin / admin123` 登录。
 
@@ -174,6 +174,8 @@ Neon 免费版自带 **6 小时** 时间点恢复，够应付误删；长期备�
 | Blueprint 报 `cannot deploy suspended service` | Render 服务页顶部横幅 | 服务被挂起（多为免费额度用尽），挂起的服务既不能改计划也不能部署，见下节 |
 | 国内浏览器打不开 `*.workers.dev` | `nslookup <域名>` | 被 DNS 污染（解析到 `199.16.156.x` 或 `2a03:2880:*`），绑自有域名解决 |
 | 访问 `/api/health` 返回 HTML 而不是 JSON | 构建日志 | `run_worker_first` 没生效，`/api/*` 被 SPA 兜底截走 |
+| 部署报 `Invalid _redirects configuration ... Infinite loop detected`（code 100324） | 构建日志末段 | `dist/_redirects` 里的 `/* /index.html 200` 与 Workers 的 `not_found_handling: single-page-application` 重复。删掉 `frontend/public/_redirects` 即可，SPA 兜底由 wrangler 配置负责 |
+| 构建日志有 `[custom build] Running: cd frontend && ...` 但**没有** `Executing user build command` | 构建日志开头 | Dashboard 的构建命令字段是空的（且只读），必须靠根级 `wrangler.jsonc` 的 `build.command` 触发 vite build |
 
 #### 服务被挂起（suspended）怎么恢复
 

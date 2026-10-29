@@ -1,2 +1,0 @@
-# SPA 兜底：静态文件优先，找不到的一律回 index.html（路由为 hash 模式）
-/*    /index.html   200
