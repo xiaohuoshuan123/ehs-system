@@ -83,7 +83,7 @@
             </span>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="profile">个人中心</el-dropdown-item>
+                <el-dropdown-item command="password">修改密码</el-dropdown-item>
                 <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -94,19 +94,99 @@
         <router-view />
       </el-main>
     </el-container>
+
+    <!-- 修改密码 -->
+    <el-dialog
+      v-model="pwdVisible"
+      title="修改密码"
+      width="420px"
+      :close-on-click-modal="false"
+      append-to-body
+      @closed="resetPwdForm"
+    >
+      <el-form ref="pwdFormRef" :model="pwdForm" :rules="pwdRules" label-width="92px">
+        <el-form-item label="原密码" prop="oldPassword">
+          <el-input v-model="pwdForm.oldPassword" type="password" show-password autocomplete="current-password" placeholder="当前登录密码" />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="pwdForm.newPassword" type="password" show-password autocomplete="new-password" placeholder="至少 6 位" />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirm">
+          <el-input v-model="pwdForm.confirm" type="password" show-password autocomplete="new-password" placeholder="再输一次新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pwdVisible = false">取消</el-button>
+        <el-button type="primary" :loading="pwdSaving" @click="submitPwd">确定</el-button>
+      </template>
+    </el-dialog>
   </el-container>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '../stores/user'
+import api from '../api'
 
 const userStore = useUserStore()
 const router = useRouter()
 const collapse = ref(false)
 const mobileMenuOpen = ref(false)
+
+// ---- 修改密码 ----
+const pwdVisible = ref(false)
+const pwdSaving = ref(false)
+const pwdFormRef = ref()
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirm: '' })
+
+const pwdRules = {
+  oldPassword: [{ required: true, message: '请输入原密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '新密码至少 6 位', trigger: 'blur' },
+  ],
+  confirm: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (rule, value, cb) =>
+        value === pwdForm.newPassword ? cb() : cb(new Error('两次输入的新密码不一致')),
+      trigger: 'blur',
+    },
+  ],
+}
+
+function resetPwdForm() {
+  pwdForm.oldPassword = ''
+  pwdForm.newPassword = ''
+  pwdForm.confirm = ''
+  pwdFormRef.value?.clearValidate()
+}
+
+async function submitPwd() {
+  const valid = await pwdFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  if (pwdForm.newPassword === pwdForm.oldPassword) {
+    ElMessage.warning('新密码不能与原密码相同')
+    return
+  }
+  pwdSaving.value = true
+  try {
+    await api.put('/auth/password', {
+      oldPassword: pwdForm.oldPassword,
+      newPassword: pwdForm.newPassword,
+    })
+    ElMessage.success('密码修改成功，请用新密码重新登录')
+    pwdVisible.value = false
+    userStore.logout()
+    router.push('/login')
+  } catch (e) {
+    // 失败提示已由 axios 拦截器统一弹出，这里不再重复
+  } finally {
+    pwdSaving.value = false
+  }
+}
 
 // 菜单配置 - 对标《有色金属压力加工企业安全生产标准化评定标准》13要素 + 独立环保管理模块
 const menuGroups = [
@@ -182,6 +262,10 @@ const menuGroups = [
 ]
 
 function handleCommand(cmd) {
+  if (cmd === 'password') {
+    resetPwdForm()
+    pwdVisible.value = true
+  }
   if (cmd === 'logout') {
     ElMessageBox.confirm('确定退出登录吗?', '提示', { type: 'warning' }).then(() => {
       userStore.logout()
