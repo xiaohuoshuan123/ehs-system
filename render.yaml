@@ -13,8 +13,10 @@
 # ============================================================
 
 services:
+  # 服务名不要叫 ehs-backend：该名字在 Render 上已被一个挂起(suspended)的旧服务占用，
+  # Blueprint 会尝试 update 它并报 "cannot deploy suspended service"。
   - type: web
-    name: ehs-backend
+    name: ehs-api
     runtime: docker
     plan: free
     region: singapore

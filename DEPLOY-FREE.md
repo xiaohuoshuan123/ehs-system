@@ -67,7 +67,7 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 
 4. 点 **Manual Deploy → Clear build cache & deploy**
 5. 首次启动会自动建表 + 灌种子数据（约 1-3 分钟）。看日志出现 `✅ [DB] 建表完成` 和 `✅ [DB] 种子数据完成` 即成功
-6. 访问 `https://ehs-backend-xxxx.onrender.com/api/health`，返回里有 `dbOk: true`
+6. 访问 `https://ehs-api-xxxx.onrender.com/api/health`，返回里有 `dbOk: true`
 
 > 免费实例 15 分钟无请求会休眠，首次访问等 30-60 秒属正常。
 
@@ -87,7 +87,7 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 
 | 变量 | 值 |
 |---|---|
-| `BACKEND_ORIGIN` | `https://ehs-backend-xxxx.onrender.com`（第 2 步的域名，**不要带 /api**） |
+| `BACKEND_ORIGIN` | `https://ehs-api-xxxx.onrender.com`（第 2 步的域名，**不要带 /api**） |
 
 4. Save and Deploy。拿到 `https://xxx.pages.dev` 后，回 Render 把 `ALLOWED_ORIGINS` 改成这个域名并重新部署
 5. 打开 Pages 域名，用 `admin / admin123` 登录
@@ -102,10 +102,12 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 |---|---|---|---|
 | 1 | 改密码 | 登录后 → 用户管理 → 改 `admin` 密码 | 初始密码是公开的 `admin123` |
 | 2 | 换 JWT 密钥 | Render → Environment → `JWT_SECRET` 改成 32 位随机串（`openssl rand -hex 32`） | 密钥泄露等于任意伪造登录 |
-| 3 | 配保活 | <https://cron-job.org>（免费）每 10 分钟 GET `https://<后端>/api/health` | 防休眠，避免每次打开等 1 分钟 |
+| 3 | 配保活 | <https://cron-job.org>（免费）**只在工作时段**每 10 分钟 GET `https://<后端>/api/health` | 防休眠，避免每次打开等 1 分钟 |
 | 4 | 配监控 | UptimeRobot 免费版每 5 分钟探活，告警 Webhook 指向飞书机器人 | 挂了能第一时间知道 |
 
-> 保活注意：Render 750 实例小时/月 ≈ 31.2 天，**只够一个服务 7×24 常驻**。如果再开第二个免费服务，两边都会中途被停到下月。
+> **保活不能 7×24，否则一定被冻结。** Render 免费额度是 750 实例小时/月，一个月有 744 小时——7×24 保活等于把额度用光，任何一点额外开销就会在月中把服务停到下月（这就是旧架构"前端+后端两个服务"半个月就全挂的原因：750 小时是两个服务共享的）。
+>
+> 正确做法：cron-job.org 里把执行时间限制为 **工作日 08:00–18:00**（约 220 小时/月），其余时间让它休眠。休眠期间**不计**实例小时，额度永远用不完，代价只是早上第一次打开等 30 秒。
 
 ---
 
@@ -142,12 +144,26 @@ Neon 免费版自带 **6 小时** 时间点恢复，够应付误删；长期备�
 | `dbOk: false` | Render 日志搜 `[DB]` | 连接串错 / 少了 `connection_limit=1` |
 | 上传附件后文件打不开 | — | **免费层的已知限制**，见下节 |
 | 页面 404 | Pages 部署日志 | Build output 目录不是 `dist` |
+| Blueprint 报 `cannot deploy suspended service` | Render 服务页顶部横幅 | 服务被挂起（多为免费额度用尽），挂起的服务既不能改计划也不能部署，见下节 |
 
-### 免费层三条红线
+#### 服务被挂起（suspended）怎么恢复
+
+`Update web service xxx plan to Free (cannot deploy suspended service)` 的意思是：Blueprint 匹配到一个**已存在但被挂起**的同名服务，想改它的计划，而 Render 不允许对挂起服务做任何变更。处理顺序：
+
+1. **先确认是不是额度用尽**。打开该服务页，若顶部有"免费实例小时已用尽 / 将在下月恢复"之类的横幅，那就是整个 workspace 被冻结——**新建服务同样会被立刻冻结**，此时任何配置改动都没用，只能等下个月 1 日额度重置，或换平台（见路线 B 备选）。
+2. **如果是服务级挂起**（旧服务早已废弃、只是占着名字），直接删掉它：服务页 → Settings → 拉到底 → **Delete Web Service**。Blueprint 下次 sync 会重新创建。
+3. **不想删旧服务**：改 `render.yaml` 里的 `name`（本项目已从 `ehs-backend` 改为 `ehs-api`，就是为了绕开被挂起的旧服务），Blueprint 会建全新服务，不碰旧的。
+4. 删/改名后回到 Blueprint → **Manual sync**，此时不应再出现该报错。
+
+> 判断额度是否用尽的旁证：同一 workspace 下**所有**服务（含早期的前端服务）同时 503，基本可以确定是 workspace 级冻结，而不是某个服务部署失败。
+
+
+### 免费层四条红线
 
 1. **上传附件会丢**：Render 免费实例没有持久磁盘，容器重启/重新部署后 `uploads/` 清空。隐患照片、培训签到表这类文件不要依赖它长期保存。需要长期留存时接 Cloudflare R2（10GB 免费，S3 兼容），改造点在后端 `/api/upload` 一处。
 2. **数据库上限约 0.5GB**：纯文本台账够用很多年；如果开始存照片/扫描件（尤其是转 base64 存库），很快会满。
 3. **月流量 5GB（Render 出站）**：Excel 导出、附件下载都算。日常几十人用没问题，别当文件服务器。
+4. **750 实例小时/月是 workspace 共享的**：跑多个免费服务、或 7×24 保活，都会在月中把额度吃光，导致**所有**免费服务一起被冻结到下月 1 日——现象就是全部 503、Blueprint 报 `cannot deploy suspended service`。只保留一个后端服务、保活限制在工作时段，是这套方案能长期免费的前提。
 
 ---
 
