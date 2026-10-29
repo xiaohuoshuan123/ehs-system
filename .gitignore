@@ -58,3 +58,6 @@ frontend/dist-verify/
 
 # 本地工作区数据（含记忆与会话缓存，不入库）
 .workbuddy/
+
+# Cloudflare wrangler 本地缓存
+.wrangler/

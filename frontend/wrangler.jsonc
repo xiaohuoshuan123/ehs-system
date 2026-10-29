@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "ehs-system",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+
+  // dist 作为静态资源绑定到 env.ASSETS；SPA 兜底由 not_found_handling 完成
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // 关键：不加这条，assets 会先吃掉 /api/* （SPA 兜底返回 index.html），反代不生效
+    "run_worker_first": ["/api/*"]
+  },
+
+  // 后端地址。改后端只改这里，前端不需要重新构建逻辑。
+  // 这是公开信息（浏览器可见），不是密钥，可以直接写在仓库里。
+  "vars": {
+    "BACKEND_ORIGIN": "https://ehs-api-jhgz.onrender.com"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

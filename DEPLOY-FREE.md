@@ -71,10 +71,25 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 
 > 免费实例 15 分钟无请求会休眠，首次访问等 30-60 秒属正常。
 
-### 第 3 步：Cloudflare Pages 部署前端（5 分钟）
+### 第 3 步：Cloudflare 部署前端（5 分钟）
 
-1. 打开 <https://dash.cloudflare.com> → **Workers & Pages → Create → Pages → Connect to Git**
-2. 选同一个仓库，构建设置：
+仓库里准备了两套托管配置，按你实际创建的项目类型选一套。**新版 Dashboard 里 New 出来的项目默认是 Workers（构建详情能看到「部署命令 `npx wrangler deploy`」），那就走 A。**
+
+#### A. Workers（新项目默认）
+
+| 字段 | 值 |
+|---|---|
+| 根目录 | `frontend` |
+| 构建命令 | `npm run build` |
+| 部署命令 | `npx wrangler deploy`（保持默认，不要改） |
+
+> **别把 `frontend` 填进「构建命令」**——它是「根目录」的值。填错会看到
+> `Executing user build command: frontend` → `/bin/sh: 1: frontend: not found`。
+
+后端地址写在 `frontend/wrangler.jsonc` 的 `vars.BACKEND_ORIGIN`，改后端只改这一处。
+`dist` 由 `wrangler.jsonc` 的 `assets.directory` 声明；`run_worker_first: ["/api/*"]` 保证接口请求先走 `worker.js` 而不是被 SPA 兜底吃掉。
+
+#### B. Pages（老项目或手动建 Pages 时）
 
 | 项 | 值 |
 |---|---|
@@ -83,16 +98,19 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 | Build command | `npm run build` |
 | Build output directory | `dist` |
 
-3. **Environment variables** 加一条：
+环境变量加 `BACKEND_ORIGIN` = `https://ehs-api-xxxx.onrender.com`（**不要带 /api**）。
 
-| 变量 | 值 |
-|---|---|
-| `BACKEND_ORIGIN` | `https://ehs-api-xxxx.onrender.com`（第 2 步的域名，**不要带 /api**） |
+#### 两套配置为什么都在
 
-4. Save and Deploy。拿到 `https://xxx.pages.dev` 后，回 Render 把 `ALLOWED_ORIGINS` 改成这个域名并重新部署
-5. 打开 Pages 域名，用 `admin / admin123` 登录
+| 文件 | 生效于 | 作用 |
+|---|---|---|
+| `frontend/worker.js` + `wrangler.jsonc` | Workers | worker 入口，`/api/*` 反代、其余交给静态资源 |
+| `frontend/functions/api/[[path]].js` | Pages | Pages Functions 反代（导出格式不同，无法共用一份） |
+| `frontend/public/_redirects` | Pages | SPA 兜底。Cloudflare 官方明确 Functions 优先于 `_redirects`，不会劫持 `/api/*` |
 
-> 前端接口走同域 `/api`，由 `frontend/functions/api/[[path]].js` 反代到后端，所以不存在跨域问题，以后换后端域名也不用重新构建前端。
+部署成功后拿到 `https://<项目名>.<子域>.workers.dev`（Pages 则是 `.pages.dev`），回 Render 把 `ALLOWED_ORIGINS` 改成这个域名并重新部署，然后用 `admin / admin123` 登录。
+
+> 前端是 hash 路由 + 同域 `/api`，产物里没有硬编码后端域名，换后端不需要重新构建前端。
 
 ---
 
