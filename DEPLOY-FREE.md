@@ -110,6 +110,15 @@ postgresql://<user>:<password>@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb
 
 部署成功后拿到 `https://<项目名>.<子域>.workers.dev`（Pages 则是 `.pages.dev`），回 Render 把 `ALLOWED_ORIGINS` 改成这个域名并重新部署，然后用 `admin / admin123` 登录。
 
+> ⚠️ **`*.workers.dev` / `*.pages.dev` 在国内打不开，必须绑自有域名。**
+> 实测 `ehs-system.fanhaobin.workers.dev` 被 DNS 污染解析到 `199.16.156.103` 和
+> `2a03:2880:f127:283:face:b00c:0:25de`（都是 Twitter 的 IP，`face:b00c` 是其特征），
+> 浏览器必然连不上。做法：Workers 项目 → **设置 → 域和路由 → 添加 → 自定义域**，
+> 填 `ehs.<你自己的域名>`（域名需已托管在同一 Cloudflare 账号），约 1 分钟自动签发证书。
+>
+> 后端是 **Cloudflare 边缘发起的服务端到服务端**请求，不经过用户本地网络，
+> 所以 `onrender.com` 是否被污染不影响前端调用；只有用户直接访问后端域名时才会受影响。
+
 > 前端是 hash 路由 + 同域 `/api`，产物里没有硬编码后端域名，换后端不需要重新构建前端。
 
 ---
@@ -163,6 +172,8 @@ Neon 免费版自带 **6 小时** 时间点恢复，够应付误删；长期备�
 | 上传附件后文件打不开 | — | **免费层的已知限制**，见下节 |
 | 页面 404 | Pages 部署日志 | Build output 目录不是 `dist` |
 | Blueprint 报 `cannot deploy suspended service` | Render 服务页顶部横幅 | 服务被挂起（多为免费额度用尽），挂起的服务既不能改计划也不能部署，见下节 |
+| 国内浏览器打不开 `*.workers.dev` | `nslookup <域名>` | 被 DNS 污染（解析到 `199.16.156.x` 或 `2a03:2880:*`），绑自有域名解决 |
+| 访问 `/api/health` 返回 HTML 而不是 JSON | 构建日志 | `run_worker_first` 没生效，`/api/*` 被 SPA 兜底截走 |
 
 #### 服务被挂起（suspended）怎么恢复
 
