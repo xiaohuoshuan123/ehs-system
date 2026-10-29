@@ -15,10 +15,31 @@ function chunks(arr, n) {
   return out;
 }
 
+// Prisma 5.22 起 DateTime 字段只接受完整 ISO-8601 或 Date 对象,
+// 'YYYY-MM-DD' 会抛 "premature end of input: Expected ISO-8601 DateTime",
+// 从而中断整个 seed。这里对 *Date / *Time 字段统一做一次规范化。
+function normalizeDates(obj) {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return obj;
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'string' && /(Date|Time|Deadline|At)$/.test(k)
+        && /^\d{4}-\d{2}-\d{2}([T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?)?$/.test(v)) {
+      const iso = v.length === 10
+        ? `${v}T00:00:00.000Z`
+        : (/[Zz]|[+-]\d{2}:?\d{2}$/.test(v) ? v : `${v}Z`);
+      const d = new Date(iso);
+      out[k] = isNaN(d.getTime()) ? v : d;
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 // 幂等创建: 按 where 存在则返回已有记录, 否则创建
 async function ensureOne(m, where, data) {
-  let r = await m.findFirst({ where });
-  if (!r) r = await m.create({ data });
+  let r = await m.findFirst({ where: normalizeDates(where) });
+  if (!r) r = await m.create({ data: normalizeDates(data) });
   return r;
 }
 
@@ -133,6 +154,7 @@ async function main() {
         // 不涉及项目 (actual=NA) 从评分点标记, 分值计入分母排除项
         const ex = data.excluded.find(e => e.contentNo && e.contentNo === s.contentNo);
         return {
+          orgId: kunshan.id,
           itemCode: s.itemCode, year: data.year, category: s.category,
           // itemNo 在 schema 是 String 类型, 但数据文件里是 number。
           // createMany 走 unnest() 批量插入, 对 String 列传 number 会严格校验失败,
@@ -144,9 +166,7 @@ async function main() {
           seq: idx,
           method: s.method, actual: s.actual,
           notApplicable: !!(ex || s.notApplicable),
-          assessmentDesc: s.desc,
-          // 不涉及原因只写 remark，不与扣分明细的 deductionReason 混用
-          remark: ex ? ex.reason : '',
+          assessmentDesc: ex && ex.reason ? `${s.desc || ''}（不涉及：${ex.reason}）` : s.desc,
         };
       });
       // 用 Promise.all 批量 create 而非 createMany:
@@ -156,7 +176,8 @@ async function main() {
       const createRows = async (list) => {
         await Promise.all(list.map(r =>
           prisma.selfAssessmentItem.create({ data: r }).catch(e => {
-            console.error(`   ⚠️  itemCode=${r.itemCode} 插入失败: ${e.message.split('\n')[0].substring(0, 200)}`);
+            const firstLine = String(e.message || e).split('\n').map(t => t.trim()).find(Boolean) || '未知错误';
+            console.error(`   ⚠️  itemCode=${r.itemCode} 插入失败: ${firstLine.substring(0, 200)}`);
             throw e;
           })
         ));
@@ -341,13 +362,11 @@ async function main() {
     orgId, name: '乳化液（轧制用）', aliases: '轧制液',
     casNo: '8013-36-9', isHazardous: true, isEasyToxic: false, isExplosive: false,
     storageLocation: '危化品仓库A区', maxStock: 5000, currentStock: 1200, status: 'active',
-    remark: '闪点约72°C，可燃液体',
   });
   await ensureOne(prisma.chemical, { name: '液压油（HLP46）' }, {
     orgId, name: '液压油（HLP46）', aliases: '抗磨液压油',
     casNo: '64742-54-7', isHazardous: true, isEasyToxic: false, isExplosive: false,
     storageLocation: '危化品仓库B区', maxStock: 2000, currentStock: 450, status: 'active',
-    remark: '废油按危废管理，禁止直排',
   });
 
   // ── 七、作业安全 ───────────────────────────────────────────
@@ -495,10 +514,9 @@ async function main() {
     orgId, title: '精炼C段地面油污未及时清理险些滑倒',
     location: '精炼C段通道',
     description: '液压油管接头松动漏油，地面油污未及时清理，险些造成人员滑倒受伤。',
-    potentialSeverity: 'serious', reportedBy: fanUser?.realName,
-    reportedAt: '2026-04-22',
-    analysis: '液压油管接头松动漏油，清理不及时',
-    correctiveAction: '已更换油管接头，增设吸油棉，加强巡检频次',
+    potentialSeverity: 'serious', reporterId: fanId,
+    reportTime: '2026-04-22',
+    handleResult: '原因分析：液压油管接头松动漏油，清理不及时；整改：已更换油管接头，增设吸油棉，加强巡检频次',
     status: 'closed',
   });
 
@@ -507,15 +525,15 @@ async function main() {
   // (记录死亡=0, 无伤害事故, 安全观察次数, STOP计数)
   await ensureOne(prisma.safetyKpi, { orgId, year: 2026, month: 1 }, {
     orgId, year: 2026, month: 1,
-    fatalities: 0, noInjury: 2, safetyObs: 15, stopCount: 3, remark: '一季度开局良好，零死亡',
+    noInjuryAccidents: 2, safetyObs: 15, stopCount: 3, remark: '一季度开局良好，零死亡',
   });
   await ensureOne(prisma.safetyKpi, { orgId, year: 2026, month: 2 }, {
     orgId, year: 2026, month: 2,
-    fatalities: 0, noInjury: 1, safetyObs: 12, stopCount: 2, remark: '春节期间停产，安全状况稳定',
+    noInjuryAccidents: 1, safetyObs: 12, stopCount: 2, remark: '春节期间停产，安全状况稳定',
   });
   await ensureOne(prisma.safetyKpi, { orgId, year: 2026, month: 3 }, {
     orgId, year: 2026, month: 3,
-    fatalities: 0, noInjury: 3, safetyObs: 18, stopCount: 4, remark: '安全生产月启动，隐患整改率100%',
+    noInjuryAccidents: 3, safetyObs: 18, stopCount: 4, remark: '安全生产月启动，隐患整改率100%',
   });
 
   console.log('\n🎯 业务模块测试数据追加完成!');
