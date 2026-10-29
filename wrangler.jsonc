@@ -19,6 +19,14 @@
   "main": "frontend/worker.js",
   "compatibility_date": "2026-10-01",
 
+  // 关键：Cloudflare Dashboard 的「构建命令」字段是空的且改不了，
+  // 日志里只有 "Executing user deploy command"，从来没有执行过 vite build，
+  // 所以 frontend/dist 不存在，wrangler 只能把源码目录当前端发出去。
+  // build.command 由 wrangler 在 deploy 前执行，绕开 Dashboard 的只读字段。
+  "build": {
+    "command": "cd frontend && npm ci --no-audit --no-fund && npm run build"
+  },
+
   "assets": {
     "directory": "./frontend/dist",
     "binding": "ASSETS",
